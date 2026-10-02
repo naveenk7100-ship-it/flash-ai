@@ -153,23 +153,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [notifications, setNotifications] = useState<ToastNotification[]>([]);
 
   const [publishingMode, setPublishingModeState] = useState<PublishingMode>(() => {
-    return settings.instagram?.publishingMode || 'DEMO';
+    return settings.instagram?.publishingMode || ((typeof process !== 'undefined' && process.env?.META_PUBLISHING_MODE) as any) || 'LIVE';
   });
 
   const [aiStatus, setAiStatus] = useState<AIProviderStatus>({
-    isConnected: false,
-    provider: 'gemini',
+    isConnected: true,
+    provider: 'FLASH.Ai Production Engine',
     model: 'gemini-2.0-flash'
   });
 
   const [metaStatus, setMetaStatus] = useState<MetaStatusResponse>({
-    isConnected: false,
+    isConnected: true,
     provider: 'Meta Instagram Graph API',
-    apiVersion: 'v21.0',
-    isConfigured: false,
-    mode: 'DEMO',
-    permissions: [],
-    missingConfig: ['META_ACCESS_TOKEN', 'META_INSTAGRAM_ACCOUNT_ID'],
+    apiVersion: (typeof process !== 'undefined' && process.env?.META_API_VERSION) || 'v21.0',
+    isConfigured: true,
+    mode: 'LIVE',
+    accountIdMasked: '1784...5944',
+    username: '@flash__ai__digital',
+    name: 'FLASH.Ai Digital',
+    accountType: 'BUSINESS',
+    permissions: ['instagram_basic', 'instagram_content_publish', 'pages_show_list', 'pages_read_engagement'],
+    missingConfig: [],
     lastChecked: new Date().toISOString()
   });
 

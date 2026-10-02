@@ -35,7 +35,11 @@ export async function createProductionServer(): Promise<http.Server> {
 
   const server = http.createServer(async (req, res) => {
     const rawUrl = req.url || '/';
-    const cleanUrl = rawUrl.split('?')[0] || '/';
+    let cleanUrl = rawUrl.split('?')[0] || '/';
+    if (cleanUrl.startsWith('/flash-ai/')) {
+      cleanUrl = cleanUrl.substring('/flash-ai'.length);
+      req.url = cleanUrl + (rawUrl.includes('?') ? '?' + rawUrl.split('?')[1] : '');
+    }
 
     // 1. API & Static Media Handling (/api/* and /media/*)
     if (cleanUrl.startsWith('/api/') || cleanUrl.startsWith('/media/')) {

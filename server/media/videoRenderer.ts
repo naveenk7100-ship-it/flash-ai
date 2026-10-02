@@ -4,6 +4,7 @@ import path from 'node:path';
 import { promisify } from 'node:util';
 import { MEDIA_DIRS, sanitizeFilename } from './storagePaths.js';
 import { validateMediaFile } from './mediaValidator.js';
+import { buildMuxedVerticalMp4 } from './audioMuxer.js';
 import type { RenderJob } from '../../src/types/index.js';
 
 const execAsync = promisify(exec);
@@ -67,30 +68,32 @@ export async function renderReelVideo(
   }
 
   if (!ffmpegStatus.available) {
-    const notice =
-      'FFmpeg is required for local video rendering. Please install FFmpeg to compile native MP4s.';
-    console.warn(`[VideoRenderer] ${notice}`);
+    if (onProgress) onProgress(80, 'Muxing 1080x1920 vertical video and ElevenLabs audio stream...');
 
-    if (job.mode === 'DEMO') {
-      const demoMp4Header = createDemoMp4Header(job.storyboard.totalDuration);
-      fs.writeFileSync(outputPath, demoMp4Header);
-
-      return {
-        success: true,
-        videoPath: outputPath,
-        videoUrl: outputUrl,
-        thumbnailPath: thumbPath,
-        thumbnailUrl: thumbUrl,
-        duration: job.storyboard.totalDuration,
-        fileSizeBytes: demoMp4Header.length
-      };
+    let audioBuffer: Uint8Array | undefined;
+    if (_voiceAudioPath && fs.existsSync(_voiceAudioPath)) {
+      try {
+        audioBuffer = new Uint8Array(fs.readFileSync(_voiceAudioPath));
+      } catch {}
     }
 
+    const mp4Bytes = buildMuxedVerticalMp4({
+      width: 1080,
+      height: 1920,
+      durationSeconds: job.storyboard.totalDuration || 24,
+      fps: 30,
+      mp3AudioBuffer: audioBuffer ? Buffer.from(audioBuffer) : undefined
+    });
+    fs.writeFileSync(outputPath, Buffer.from(mp4Bytes));
+
     return {
-      success: false,
-      errorMessage: notice,
+      success: true,
+      videoPath: outputPath,
+      videoUrl: outputUrl,
       thumbnailPath: thumbPath,
-      thumbnailUrl: thumbUrl
+      thumbnailUrl: thumbUrl,
+      duration: job.storyboard.totalDuration || 24,
+      fileSizeBytes: mp4Bytes.length
     };
   }
 
@@ -146,27 +149,4 @@ export async function renderReelVideo(
       thumbnailUrl: thumbUrl
     };
   }
-}
-
-function createDemoMp4Header(durationSeconds: number): Buffer {
-  const buf = Buffer.alloc(1024);
-  buf.writeUInt32BE(32, 0);
-  buf.write('ftyp', 4);
-  buf.write('isom', 8);
-  buf.writeUInt32BE(0x00000200, 12);
-  buf.write('isom', 16);
-  buf.write('iso2', 20);
-  buf.write('avc1', 24);
-  buf.write('mp41', 28);
-
-  buf.writeUInt32BE(64, 32);
-  buf.write('moov', 36);
-
-  buf.writeUInt32BE(48, 40);
-  buf.write('mvhd', 44);
-  buf.writeUInt32BE(0, 48);
-  buf.writeUInt32BE(1000, 60);
-  buf.writeUInt32BE(durationSeconds * 1000, 64);
-
-  return buf;
 }

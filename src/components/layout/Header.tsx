@@ -41,7 +41,7 @@ export const Header: React.FC = () => {
         <div className="hidden lg:flex items-center gap-3">
           <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900/90 border border-slate-800 text-xs text-slate-300">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span>Target: <strong className="text-slate-100">SMBs, Local Clinics, Startups</strong></span>
+            <span>Target: <strong className="text-slate-100">AI Tools, Model Updates & Workflows</strong></span>
           </div>
 
           <div

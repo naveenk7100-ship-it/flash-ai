@@ -76,7 +76,10 @@ export function createAiApiHandler() {
     next?: () => void
   ) {
     const rawUrl = req.url || '';
-    const url = rawUrl.split('?')[0] || '';
+    let url = rawUrl.split('?')[0] || '';
+    if (url.startsWith('/flash-ai/')) {
+      url = url.substring('/flash-ai'.length);
+    }
     const queryParams = new URLSearchParams(rawUrl.includes('?') ? rawUrl.split('?')[1] : '');
 
     // 1. Generate Request ID and Security Headers
@@ -736,7 +739,7 @@ export function createAiApiHandler() {
       }
 
       // --- META / INSTAGRAM PUBLISHING POST ENDPOINTS ---
-      if (url === '/api/meta/test-connection' && req.method === 'POST') {
+      if ((url === '/api/meta/verify' || url === '/api/meta/test-connection') && req.method === 'POST') {
         try {
           const result = await serverMetaService.validateCredentials();
           res.statusCode = 200;

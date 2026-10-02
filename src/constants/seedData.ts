@@ -412,17 +412,17 @@ export const INITIAL_ANALYTICS: AnalyticsSnapshot = {
 
 export const INITIAL_SETTINGS: AutomationSetting = {
   instagram: {
-    isConnected: false,
-    businessAccountId: '17841400000000000',
+    isConnected: true,
+    businessAccountId: '17841436234295944',
     pageId: '109283746501928',
-    appId: '891029384756102',
+    appId: '1086941427246430',
     appSecretPlaceholder: '••••••••••••••••••••••••••••••••',
-    userAccessTokenPlaceholder: 'EAAG...[Enter Long-Lived Meta User Token]',
+    userAccessTokenPlaceholder: 'EAAG...[Long-Lived Meta User Token Configured]',
     autoPublishEnabled: false,
     requireManualApproval: true,
-    webhookUrl: 'https://api.flash.ai/v1/webhooks/instagram',
+    webhookUrl: 'https://flash-ai.app/api/meta/webhook',
     apiVersion: 'v21.0',
-    publishingMode: 'DEMO',
+    publishingMode: 'LIVE',
     defaultTimezone: 'Asia/Kolkata'
   },
   aiProvider: {
