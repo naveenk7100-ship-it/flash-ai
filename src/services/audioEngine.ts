@@ -42,7 +42,7 @@ export class AudioEngine {
     const { scenes, preferredMusicTrackId } = params;
 
     const defaultTrack =
-      ROYALTY_FREE_TRACKS.find((t) => t.id === preferredMusicTrackId) ||
+      ROYALTY_FREE_TRACKS.find((t: any) => t.id === preferredMusicTrackId) ||
       ROYALTY_FREE_TRACKS[0];
 
     // Sound effects mapped at scene cut transitions

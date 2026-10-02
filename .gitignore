@@ -18,15 +18,11 @@ dist-ssr
 .env.*
 !.env.example
 
-# Local Media Storage, Database & Temporary Renders
-media/
-media/renders/
-media/audio/
-media/tmp/
-media/thumbnails/
-scratch/
-data/
-server/data/
+# Root Media Storage & Scratch (Do NOT ignore src/components/media or server/media)
+/media/
+/scratch/
+/data/
+/server/data/
 *.mp4
 *.mp3
 *.wav

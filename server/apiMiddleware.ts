@@ -63,9 +63,9 @@ export function createAiApiHandler() {
 
   // Eagerly initialize media self-healing on boot
   if (!selfHealingInitPromise) {
-    selfHealingInitPromise = mediaSelfHealingService.healAllRecords().then((report) => {
+    selfHealingInitPromise = mediaSelfHealingService.healAllRecords().then((report: any) => {
       Logger.info(`[Self-Healing] Boot check complete: ${report.healthyCount} healthy, ${report.repairedCount} repaired, ${report.failedCount} failed`, { component: 'Media' });
-    }).catch((err) => {
+    }).catch((err: any) => {
       Logger.error('Failed to run startup media self-healing', { component: 'Media' }, err);
     });
   }
