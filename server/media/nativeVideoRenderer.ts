@@ -3,8 +3,8 @@
  * 
  * Flow:
  * Storyboard → Scene Visual Generation → Multi-Scene SVG Compositions
- * → Rasterize Each Frame via @resvg/resvg-js (1080x1920 True Pixel Frames)
- * → Stream / Batch Frame Sequence to FFmpeg (libx264, yuv420p)
+ * → Rasterize Each Scene via @resvg/resvg-js (1080x1920 True Pixel Frames)
+ * → Concat Demuxing to FFmpeg (libx264, yuv420p, 30fps)
  * → Mux ElevenLabs Audio Track with Explicit Stream Mapping & AAC Encoding
  * → Measure Loudness & Verify Audible Speech (volumedetect)
  * → Stream & Frame Validation
@@ -20,7 +20,10 @@ import { MEDIA_ROOT } from './storagePaths.js';
 import { MediaValidator } from './mediaValidator.js';
 import type { SceneIntentAnalysis } from '../../src/services/visualIntentEngine.js';
 
-const ffmpegBinaryPath: string = typeof ffmpegStatic === 'string' ? ffmpegStatic : ((ffmpegStatic as any)?.default || String(ffmpegStatic || ''));
+const ffmpegBinaryPath: string =
+  typeof ffmpegStatic === 'string'
+    ? ffmpegStatic
+    : ((ffmpegStatic as any)?.default || String(ffmpegStatic || ''));
 
 export interface NativeRenderOptions {
   scenes: SceneIntentAnalysis[];
@@ -76,8 +79,7 @@ export class NativeVideoRenderer {
 
     const timestamp = Date.now();
     const tmpDir = path.resolve(MEDIA_ROOT, 'tmp', `native_render_${timestamp}`);
-    const framesDir = path.join(tmpDir, 'frames');
-    if (!fs.existsSync(framesDir)) fs.mkdirSync(framesDir, { recursive: true });
+    if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir, { recursive: true });
 
     const rendersDir = path.resolve(MEDIA_ROOT, 'renders');
     if (!fs.existsSync(rendersDir)) fs.mkdirSync(rendersDir, { recursive: true });
@@ -87,13 +89,11 @@ export class NativeVideoRenderer {
     const finalOutputMp4 = path.join(rendersDir, outputName);
 
     try {
-      // 1. Calculate per-scene durations and frame counts
-      const sceneDuration = totalDuration / scenes.length;
-      const totalFrames = Math.ceil(totalDuration * fps);
-      let globalFrameIdx = 0;
+      // 1. Calculate per-scene durations
+      const sceneDuration = parseFloat((totalDuration / scenes.length).toFixed(3));
 
       // 2. Pre-render scene base images with Resvg
-      const scenePngBuffers: Buffer[] = [];
+      const scenePngPaths: string[] = [];
       for (let s = 0; s < scenes.length; s++) {
         const scene = scenes[s];
         const svg = scene.svgMockup;
@@ -108,47 +108,45 @@ export class NativeVideoRenderer {
           }
         });
         const pngData = resvg.render();
-        scenePngBuffers.push(pngData.asPng());
-      }
+        const scenePngPath = path.join(tmpDir, `scene_${String(s).padStart(2, '0')}.png`);
+        fs.writeFileSync(scenePngPath, pngData.asPng());
+        scenePngPaths.push(scenePngPath);
 
-      // 3. Write Frame Sequence to Disk
-      for (let sIdx = 0; sIdx < scenes.length; sIdx++) {
-        const sceneFrames = Math.round(sceneDuration * fps);
-        const pngBuf = scenePngBuffers[sIdx];
-
-        for (let f = 0; f < sceneFrames && globalFrameIdx < totalFrames; f++) {
-          const framePath = path.join(framesDir, `frame_${String(globalFrameIdx).padStart(5, '0')}.png`);
-          fs.writeFileSync(framePath, pngBuf);
-          globalFrameIdx++;
-
-          if (globalFrameIdx % 60 === 0 && options.onProgress) {
-            const pct = Math.round((globalFrameIdx / totalFrames) * 60);
-            options.onProgress(pct);
-          }
+        if (options.onProgress) {
+          options.onProgress(Math.round(((s + 1) / scenes.length) * 40));
         }
       }
 
-      // Fill any remaining frames to reach exact totalFrames
-      while (globalFrameIdx < totalFrames) {
-        const lastPng = scenePngBuffers[scenePngBuffers.length - 1];
-        const framePath = path.join(framesDir, `frame_${String(globalFrameIdx).padStart(5, '0')}.png`);
-        fs.writeFileSync(framePath, lastPng);
-        globalFrameIdx++;
+      // 3. Create Concat Demuxer manifest for FFmpeg
+      const concatFilePath = path.join(tmpDir, 'concat_scenes.txt');
+      let concatContent = '';
+      for (let s = 0; s < scenePngPaths.length; s++) {
+        // Forward slashes for FFmpeg compatibility
+        const normalizedPath = scenePngPaths[s].replace(/\\/g, '/');
+        concatContent += `file '${normalizedPath}'\n`;
+        concatContent += `duration ${sceneDuration}\n`;
       }
+      // FFmpeg concat demuxer requirement: repeat the last image entry without duration
+      const lastPath = scenePngPaths[scenePngPaths.length - 1].replace(/\\/g, '/');
+      concatContent += `file '${lastPath}'\n`;
 
-      if (options.onProgress) options.onProgress(70);
+      fs.writeFileSync(concatFilePath, concatContent, 'utf8');
+
+      if (options.onProgress) options.onProgress(50);
 
       // 4. Encode H.264 Video & Mux Audio with Explicit Stream Mapping
       const hasAudioFile = Boolean(options.audioPath && fs.existsSync(options.audioPath));
       const ffmpegArgs = [
         '-y',
-        '-framerate', String(fps),
-        '-i', path.join(framesDir, 'frame_%05d.png'),
-        ...(hasAudioFile ? ['-i', options.audioPath!] : []),
+        '-f', 'concat',
+        '-safe', '0',
+        '-i', concatFilePath.replace(/\\/g, '/'),
+        ...(hasAudioFile ? ['-i', options.audioPath!.replace(/\\/g, '/')] : []),
         '-map', '0:v:0',
         ...(hasAudioFile ? ['-map', '1:a:0'] : []),
         '-c:v', 'libx264',
         '-pix_fmt', 'yuv420p',
+        '-r', String(fps),
         '-preset', 'fast',
         '-crf', '20',
         ...(hasAudioFile
@@ -199,7 +197,7 @@ export class NativeVideoRenderer {
 
       const fileStat = fs.statSync(finalOutputMp4);
 
-      // 8. Verify Frame Content at Key Timestamps (0s, 3s, 6s, 9s, 12s, 15s, 18s, 21s)
+      // 8. Sample Frames at Key Timestamps
       const sampleTimestamps = [0, 3, 6, 9, 12, 15, 18, 21];
       const sampledFrames = sampleTimestamps.map((t) => {
         const sceneIndex = Math.min(scenes.length - 1, Math.floor(t / sceneDuration));

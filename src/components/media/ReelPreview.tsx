@@ -10,7 +10,9 @@ import {
   Download,
   CheckSquare,
   Layers,
-  ShieldCheck
+  ShieldCheck,
+  Film,
+  Sparkles
 } from 'lucide-react';
 
 interface ReelPreviewProps {
@@ -25,16 +27,24 @@ export const ReelPreview: React.FC<ReelPreviewProps> = ({
   onEditStoryboard
 }) => {
   const { addContentItem, showToast, setActiveTab } = useApp();
+
+  const videoUrl = job.outputVideoUrl || `/media/renders/reel_${job.id}.mp4`;
+
+  const [viewMode, setViewMode] = useState<'video' | 'storyboard'>(
+    job.outputVideoUrl ? 'video' : 'storyboard'
+  );
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [isMuted, setIsMuted] = useState(false);
   const [showSubtitles, setShowSubtitles] = useState(true);
   const [activeSceneIndex, setActiveSceneIndex] = useState(0);
+
+  const videoRef = useRef<HTMLVideoElement | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const startTimeRef = useRef<number>(0);
 
-  const duration = job.duration || job.storyboard.totalDuration || 30;
-  const scenes = job.storyboard.scenes || [];
+  const duration = job.duration || job.storyboard?.totalDuration || 24;
+  const scenes = job.storyboard?.scenes || [];
   const subtitles = job.subtitles || [];
   const brand = job.brandPreset;
 
@@ -48,9 +58,9 @@ export const ReelPreview: React.FC<ReelPreviewProps> = ({
     }
   }, [currentTime, scenes, activeSceneIndex]);
 
-  // Playback timer simulation for SVG/Canvas procedural & native MP4s
+  // Storyboard timer animation loop (when in storyboard blueprint mode)
   useEffect(() => {
-    if (isPlaying) {
+    if (viewMode === 'storyboard' && isPlaying) {
       startTimeRef.current = performance.now() - currentTime * 1000;
 
       const loop = (now: number) => {
@@ -72,25 +82,52 @@ export const ReelPreview: React.FC<ReelPreviewProps> = ({
     return () => {
       if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
     };
-  }, [isPlaying, duration]);
+  }, [isPlaying, duration, viewMode]);
 
   const togglePlay = () => {
-    if (currentTime >= duration) {
-      setCurrentTime(0);
-      setIsPlaying(true);
+    if (viewMode === 'video' && videoRef.current) {
+      if (videoRef.current.paused || videoRef.current.ended) {
+        videoRef.current.play().catch(() => {});
+        setIsPlaying(true);
+      } else {
+        videoRef.current.pause();
+        setIsPlaying(false);
+      }
     } else {
-      setIsPlaying(!isPlaying);
+      if (currentTime >= duration) {
+        setCurrentTime(0);
+        setIsPlaying(true);
+      } else {
+        setIsPlaying(!isPlaying);
+      }
     }
   };
 
-  const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = parseFloat(e.target.value);
-    setCurrentTime(val);
+  const handleSeek = (time: number) => {
+    setCurrentTime(time);
+    if (viewMode === 'video' && videoRef.current) {
+      videoRef.current.currentTime = time;
+    }
+  };
+
+  const handleRestart = () => {
+    setCurrentTime(0);
+    if (viewMode === 'video' && videoRef.current) {
+      videoRef.current.currentTime = 0;
+      videoRef.current.play().catch(() => {});
+      setIsPlaying(true);
+    } else {
+      setIsPlaying(true);
+    }
   };
 
   const handleJumpToScene = (sceneStartTime: number) => {
-    setCurrentTime(sceneStartTime);
+    handleSeek(sceneStartTime);
     setIsPlaying(true);
+    if (viewMode === 'video' && videoRef.current) {
+      videoRef.current.currentTime = sceneStartTime;
+      videoRef.current.play().catch(() => {});
+    }
   };
 
   // Find active subtitle cue
@@ -101,16 +138,14 @@ export const ReelPreview: React.FC<ReelPreviewProps> = ({
   const currentScene = scenes[activeSceneIndex] || scenes[0];
 
   const handleSendToApproval = () => {
-    const videoUrl = job.outputVideoUrl || `/media/renders/reel_${job.id}.mp4`;
-
     addContentItem({
       title: job.contentTitle,
-      pillarId: job.storyboard.pillarId,
+      pillarId: job.storyboard?.pillarId || 'ai-tools',
       platform: 'Instagram Reels',
-      videoDuration: `${duration}s` as any,
+      videoDuration: `${Math.round(duration)}s` as any,
       tone: 'Authoritative & Sharp',
-      targetAudience: 'Small business owners & local clinics',
-      cta: 'DM "AUTOMATE"',
+      targetAudience: 'AI Creators, Developers & Knowledge Workers',
+      cta: 'Explore Curated AI Tools',
       status: 'REVIEW',
       mediaUrl: videoUrl,
       mediaType: 'REELS',
@@ -122,16 +157,16 @@ export const ReelPreview: React.FC<ReelPreviewProps> = ({
         videoConcept: job.contentTitle,
         shortScript: scenes.map((s) => s.speechText).join('\n\n'),
         onScreenText: scenes.map((s) => s.onScreenText),
-        caption: `🚀 ${job.contentTitle}\n\n${scenes.map((s) => `▪ ${s.onScreenText}`).join('\n')}\n\n👉 DM "AUTOMATE" to install this AI workflow into your business.\n\n#FLASHai #AIBusiness #Automation #BusinessGrowth`,
-        cta: 'DM "AUTOMATE"',
+        caption: `⚡ ${job.contentTitle}\n\n${scenes.map((s) => `▪ ${s.onScreenText}`).join('\n')}\n\n#FLASHai #AITools #AIUpdates #TechNews #Productivity`,
+        cta: 'Explore Daily AI Updates',
         hashtags: {
-          niche: ['#AIAutomation', '#BusinessTech', '#FLASHai'],
-          broad: ['#Productivity', '#SmallBusinessGrowth'],
-          viral: ['#ReelsViral', '#TechInnovation']
+          niche: ['#AITools', '#TechUpdates', '#FLASHai'],
+          broad: ['#Productivity', '#AIInnovation'],
+          viral: ['#ReelsViral', '#TechNews']
         },
         usedRealAI: true,
         qualityScore: 98,
-        modelName: 'Gemini 2.0 Flash + FLASH.Ai Media Engine'
+        modelName: 'ElevenLabs Liam + FLASH.Ai H.264 Engine'
       }
     });
 
@@ -141,9 +176,9 @@ export const ReelPreview: React.FC<ReelPreviewProps> = ({
   };
 
   const handleDownload = () => {
-    if (job.outputVideoUrl) {
+    if (videoUrl) {
       const a = document.createElement('a');
-      a.href = job.outputVideoUrl;
+      a.href = videoUrl;
       a.download = `${job.contentTitle.toLowerCase().replace(/[^a-z0-9]/g, '_')}_reel.mp4`;
       document.body.appendChild(a);
       a.click();
@@ -157,7 +192,44 @@ export const ReelPreview: React.FC<ReelPreviewProps> = ({
   return (
     <div className="flex flex-col lg:flex-row gap-6 items-start justify-center max-w-5xl mx-auto">
       {/* 9:16 Vertical Reel Player Container */}
-      <div className="w-full max-w-[340px] sm:max-w-[380px] mx-auto shrink-0">
+      <div className="w-full max-w-[340px] sm:max-w-[380px] mx-auto shrink-0 select-none">
+        
+        {/* Mode Selector Pill Toggle */}
+        <div className="mb-3 p-1 rounded-2xl bg-slate-900/90 border border-slate-800 flex items-center gap-1 shadow-lg">
+          <button
+            onClick={() => {
+              setViewMode('video');
+              if (videoRef.current && isPlaying) videoRef.current.play().catch(() => {});
+            }}
+            disabled={!job.outputVideoUrl}
+            className={`flex-1 py-1.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+              viewMode === 'video'
+                ? 'bg-gradient-to-r from-cyan-500 to-indigo-600 text-black shadow-md shadow-cyan-500/20'
+                : job.outputVideoUrl
+                ? 'text-slate-300 hover:text-white hover:bg-slate-800'
+                : 'text-slate-600 cursor-not-allowed opacity-50'
+            }`}
+          >
+            <Film className="w-3.5 h-3.5" />
+            <span>Finished Video</span>
+          </button>
+
+          <button
+            onClick={() => {
+              setViewMode('storyboard');
+              if (videoRef.current) videoRef.current.pause();
+            }}
+            className={`flex-1 py-1.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+              viewMode === 'storyboard'
+                ? 'bg-gradient-to-r from-purple-500 to-pink-600 text-white shadow-md shadow-purple-500/20'
+                : 'text-slate-300 hover:text-white hover:bg-slate-800'
+            }`}
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Storyboard</span>
+          </button>
+        </div>
+
         <div className="relative aspect-[9/16] rounded-3xl overflow-hidden border-2 border-cyan-500/40 shadow-2xl shadow-cyan-950/60 bg-[#07090e] flex flex-col justify-between">
           
           {/* Top Reels Safe Overlay Header */}
@@ -171,40 +243,30 @@ export const ReelPreview: React.FC<ReelPreviewProps> = ({
             </span>
           </div>
 
-          {/* Video / SVG Scene Stage */}
-          <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none select-none">
-            {currentScene ? (
-              <div className="w-full h-full p-6 flex flex-col justify-center items-center text-center bg-gradient-to-b from-slate-950 via-slate-900 to-black relative">
-                {/* Cyber grid background */}
-                <div className="absolute inset-0 cyber-grid opacity-25" />
-                
-                {/* Ambient glow */}
-                <div
-                  className="absolute w-64 h-64 rounded-full filter blur-3xl opacity-20 pointer-events-none"
-                  style={{ backgroundColor: brand?.primaryColor || '#00F5FF' }}
+          {/* Video / Visual Stage */}
+          <div className="absolute inset-0 z-10 flex items-center justify-center overflow-hidden">
+            {viewMode === 'video' && videoUrl ? (
+              /* REAL HTML5 VIDEO PLAYER */
+              <div className="w-full h-full relative">
+                <video
+                  ref={videoRef}
+                  src={videoUrl}
+                  playsInline
+                  muted={isMuted}
+                  loop
+                  onPlay={() => setIsPlaying(true)}
+                  onPause={() => setIsPlaying(false)}
+                  onTimeUpdate={() => {
+                    if (videoRef.current) {
+                      setCurrentTime(videoRef.current.currentTime);
+                    }
+                  }}
+                  className="w-full h-full object-cover"
                 />
-
-                {/* Top Section Tag */}
-                <div className="relative z-10 mb-4 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/40 text-[11px] font-bold text-cyan-300 uppercase tracking-widest">
-                  Scene 0{currentScene.sceneNumber} • {currentScene.section}
-                </div>
-
-                {/* Main Dynamic Headline */}
-                <h2 className="relative z-10 text-xl sm:text-2xl font-black text-white leading-snug max-w-[280px] drop-shadow-md">
-                  {currentScene.onScreenText}
-                </h2>
-
-                {/* Visual Direction / HUD Box */}
-                <div className="relative z-10 mt-6 p-3.5 rounded-xl bg-slate-950/80 border border-slate-800/80 text-[11px] text-slate-400 max-w-[260px] text-left">
-                  <span className="text-cyan-400 font-mono text-[10px] block mb-1">
-                    &gt; {currentScene.animation.toUpperCase()} ANIMATION
-                  </span>
-                  {currentScene.visualDescription}
-                </div>
 
                 {/* Burned-in Subtitle Overlay (Instagram Safe Zone) */}
                 {showSubtitles && activeCue && (
-                  <div className="absolute bottom-20 z-30 px-4 w-full flex justify-center">
+                  <div className="absolute bottom-20 z-30 px-4 w-full flex justify-center pointer-events-none">
                     <div className="px-4 py-2 rounded-xl bg-black/90 border border-cyan-500/40 shadow-xl backdrop-blur-md max-w-[90%]">
                       <p className="text-sm font-extrabold text-white tracking-wide uppercase leading-snug">
                         {activeCue.text.split(' ').map((word, wIdx) => {
@@ -225,7 +287,62 @@ export const ReelPreview: React.FC<ReelPreviewProps> = ({
                   </div>
                 )}
               </div>
-            ) : null}
+            ) : (
+              /* STORYBOARD BLUEPRINT VIEW */
+              currentScene ? (
+                <div className="w-full h-full p-6 flex flex-col justify-center items-center text-center bg-gradient-to-b from-slate-950 via-slate-900 to-black relative">
+                  {/* Cyber grid background */}
+                  <div className="absolute inset-0 cyber-grid opacity-25" />
+                  
+                  {/* Ambient glow */}
+                  <div
+                    className="absolute w-64 h-64 rounded-full filter blur-3xl opacity-20 pointer-events-none"
+                    style={{ backgroundColor: brand?.primaryColor || '#00F5FF' }}
+                  />
+
+                  {/* Top Section Tag */}
+                  <div className="relative z-10 mb-4 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/40 text-[11px] font-bold text-cyan-300 uppercase tracking-widest">
+                    Scene 0{currentScene.sceneNumber} • {currentScene.section}
+                  </div>
+
+                  {/* Main Dynamic Headline */}
+                  <h2 className="relative z-10 text-xl sm:text-2xl font-black text-white leading-snug max-w-[280px] drop-shadow-md">
+                    {currentScene.onScreenText}
+                  </h2>
+
+                  {/* Visual Direction / HUD Box */}
+                  <div className="relative z-10 mt-6 p-3.5 rounded-xl bg-slate-950/80 border border-slate-800/80 text-[11px] text-slate-400 max-w-[260px] text-left">
+                    <span className="text-cyan-400 font-mono text-[10px] block mb-1">
+                      &gt; {currentScene.animation.toUpperCase()} ANIMATION
+                    </span>
+                    {currentScene.visualDescription}
+                  </div>
+
+                  {/* Burned-in Subtitle Overlay (Instagram Safe Zone) */}
+                  {showSubtitles && activeCue && (
+                    <div className="absolute bottom-20 z-30 px-4 w-full flex justify-center pointer-events-none">
+                      <div className="px-4 py-2 rounded-xl bg-black/90 border border-cyan-500/40 shadow-xl backdrop-blur-md max-w-[90%]">
+                        <p className="text-sm font-extrabold text-white tracking-wide uppercase leading-snug">
+                          {activeCue.text.split(' ').map((word, wIdx) => {
+                            const isEmph = activeCue.emphasisWords?.includes(word);
+                            return (
+                              <span
+                                key={wIdx}
+                                className={
+                                  isEmph ? 'text-cyan-400 drop-shadow-[0_0_8px_#00f5ff]' : 'text-white'
+                                }
+                              >
+                                {word}{' '}
+                              </span>
+                            );
+                          })}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : null
+            )}
           </div>
 
           {/* Interactive Play/Pause Big Center Overlay */}
@@ -250,7 +367,7 @@ export const ReelPreview: React.FC<ReelPreviewProps> = ({
                 max={duration}
                 step="0.1"
                 value={currentTime}
-                onChange={handleSeek}
+                onChange={(e) => handleSeek(parseFloat(e.target.value))}
                 className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-400"
               />
               <div className="flex justify-between text-[10px] text-slate-400 font-mono">
@@ -269,7 +386,7 @@ export const ReelPreview: React.FC<ReelPreviewProps> = ({
                   {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 fill-current" />}
                 </button>
                 <button
-                  onClick={() => setCurrentTime(0)}
+                  onClick={handleRestart}
                   className="p-1.5 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700"
                 >
                   <RotateCcw className="w-4 h-4" />
@@ -347,7 +464,7 @@ export const ReelPreview: React.FC<ReelPreviewProps> = ({
               const isActive = idx === activeSceneIndex;
               return (
                 <button
-                  key={scene.id}
+                  key={scene.id || idx}
                   onClick={() => handleJumpToScene(scene.startTime)}
                   className={`w-full text-left p-3 rounded-xl border transition-all flex items-center justify-between gap-3 ${
                     isActive
@@ -361,7 +478,7 @@ export const ReelPreview: React.FC<ReelPreviewProps> = ({
                         isActive ? 'bg-cyan-400 text-black' : 'bg-slate-800 text-slate-300'
                       }`}
                     >
-                      {scene.sceneNumber}
+                      {scene.sceneNumber || idx + 1}
                     </span>
                     <div>
                       <div className="flex items-center gap-2">

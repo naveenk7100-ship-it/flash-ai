@@ -1,13 +1,13 @@
 /**
- * FLASH.Ai Mobile Reel Preview Player (Phase 2 - Requirement 9)
+ * FLASH.Ai Mobile Reel Preview Player (Production Grade)
  * 
  * Supports:
- * - 9:16 mobile device simulator with creator overlays
- * - Play, pause, restart, and scrub controls
- * - Scene inspector (jumping between scenes 1..5)
- * - Caption timing inspector with word-level highlight preview
- * - Audio toggle & procedural SFX demo
- * - Export trigger
+ * - Direct Dual-Mode View: [🎬 Finished 9:16 Video (H.264 MP4)] vs [📋 Storyboard Blueprint]
+ * - True HTML5 <video> element playback for rendered H.264 MP4 video assets
+ * - Synchronized interactive scrubber, audio volume, restart, and word-level kinetic captions
+ * - Scene inspector & visual flow breakdown
+ * - Zero forced generic CTA overlays (user script is the single source of truth)
+ * - Direct export & high-speed MP4 download
  */
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -26,30 +26,45 @@ import {
   Download,
   CheckCircle,
   Layers,
-  Subtitles
+  Subtitles,
+  Film,
+  Sparkles
 } from 'lucide-react';
 
 interface MobileReelPreviewProps {
   project: ReelProductionProject;
   onExport?: () => void;
   onEditScene?: (sceneIndex: number) => void;
+  videoUrl?: string;
 }
 
 export const MobileReelPreview: React.FC<MobileReelPreviewProps> = ({
   project,
   onExport,
-  onEditScene
+  onEditScene,
+  videoUrl: explicitVideoUrl
 }) => {
+  // Resolve video URL from props, export status, or first scene media if .mp4
+  const detectedVideoUrl =
+    explicitVideoUrl ||
+    project.exportStatus?.outputVideoUrl ||
+    (project.scenes?.[0]?.media?.url?.endsWith('.mp4') ? project.scenes[0].media.url : undefined);
+
+  const [viewMode, setViewMode] = useState<'video' | 'storyboard'>(
+    detectedVideoUrl ? 'video' : 'storyboard'
+  );
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [isMuted, setIsMuted] = useState(false);
   const [showSubtitles, setShowSubtitles] = useState(true);
   const [activeSceneIndex, setActiveSceneIndex] = useState(0);
+
+  const videoRef = useRef<HTMLVideoElement | null>(null);
   const animFrameRef = useRef<number | null>(null);
   const startTimeRef = useRef<number>(0);
 
-  const duration = project.totalDurationSeconds || 30;
-  const scenes = project.scenes;
+  const duration = project.totalDurationSeconds || 24;
+  const scenes = project.scenes || [];
   const captions = project.captions?.cues || [];
 
   // Determine active scene from currentTime
@@ -59,15 +74,15 @@ export const MobileReelPreview: React.FC<MobileReelPreviewProps> = ({
     );
     if (idx !== -1 && idx !== activeSceneIndex) {
       setActiveSceneIndex(idx);
-      if (!isMuted && scenes[idx]?.audioSettings.sfxType) {
+      if (!isMuted && viewMode === 'storyboard' && scenes[idx]?.audioSettings?.sfxType) {
         audioEngine.playProceduralSfx(scenes[idx].audioSettings.sfxType);
       }
     }
-  }, [currentTime, scenes, activeSceneIndex, isMuted]);
+  }, [currentTime, scenes, activeSceneIndex, isMuted, viewMode]);
 
-  // Playback timer simulation
+  // Storyboard timer animation loop (when in storyboard blueprint mode)
   useEffect(() => {
-    if (isPlaying) {
+    if (viewMode === 'storyboard' && isPlaying) {
       startTimeRef.current = performance.now() - currentTime * 1000;
 
       const loop = (now: number) => {
@@ -89,37 +104,76 @@ export const MobileReelPreview: React.FC<MobileReelPreviewProps> = ({
     return () => {
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
     };
-  }, [isPlaying, duration]);
+  }, [isPlaying, duration, viewMode]);
 
   const togglePlay = () => {
-    if (currentTime >= duration) {
-      setCurrentTime(0);
-      setIsPlaying(true);
+    if (viewMode === 'video' && videoRef.current) {
+      if (videoRef.current.paused || videoRef.current.ended) {
+        videoRef.current.play().catch(() => {});
+        setIsPlaying(true);
+      } else {
+        videoRef.current.pause();
+        setIsPlaying(false);
+      }
     } else {
-      setIsPlaying(!isPlaying);
+      if (currentTime >= duration) {
+        setCurrentTime(0);
+        setIsPlaying(true);
+      } else {
+        setIsPlaying(!isPlaying);
+      }
     }
   };
 
   const handleRestart = () => {
     setCurrentTime(0);
-    setIsPlaying(true);
-    if (!isMuted) audioEngine.playProceduralSfx('whoosh');
+    if (viewMode === 'video' && videoRef.current) {
+      videoRef.current.currentTime = 0;
+      videoRef.current.play().catch(() => {});
+      setIsPlaying(true);
+    } else {
+      setIsPlaying(true);
+      if (!isMuted) audioEngine.playProceduralSfx('whoosh');
+    }
+  };
+
+  const handleSeek = (time: number) => {
+    setCurrentTime(time);
+    if (viewMode === 'video' && videoRef.current) {
+      videoRef.current.currentTime = time;
+    }
   };
 
   const handleJumpToScene = (index: number) => {
     const scene = scenes[index];
     if (scene) {
-      setCurrentTime(scene.startTimeSeconds);
+      handleSeek(scene.startTimeSeconds);
       setActiveSceneIndex(index);
       setIsPlaying(true);
-      if (!isMuted && scene.audioSettings.sfxType) {
+      if (viewMode === 'video' && videoRef.current) {
+        videoRef.current.currentTime = scene.startTimeSeconds;
+        videoRef.current.play().catch(() => {});
+      } else if (!isMuted && scene.audioSettings?.sfxType) {
         audioEngine.playProceduralSfx(scene.audioSettings.sfxType);
       }
       if (onEditScene) onEditScene(index);
     }
   };
 
-  // Find active caption cue
+  const handleDownloadMp4 = () => {
+    if (detectedVideoUrl) {
+      const a = document.createElement('a');
+      a.href = detectedVideoUrl;
+      a.download = `${project.title.toLowerCase().replace(/[^a-z0-9]/g, '_')}_reel.mp4`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } else if (onExport) {
+      onExport();
+    }
+  };
+
+  // Active caption cue
   const activeCue: CaptionCue | undefined = captions.find(
     (c) => currentTime >= c.startTimeSeconds && currentTime <= c.endTimeSeconds
   );
@@ -130,6 +184,43 @@ export const MobileReelPreview: React.FC<MobileReelPreviewProps> = ({
     <div className="flex flex-col lg:flex-row gap-6 items-start justify-center max-w-5xl mx-auto">
       {/* 9:16 Vertical Mobile Device Frame */}
       <div className="w-full max-w-[340px] sm:max-w-[360px] mx-auto shrink-0 select-none">
+        
+        {/* Mode Selector Pill Toggle */}
+        <div className="mb-3 p-1 rounded-2xl bg-slate-900/90 border border-slate-800 flex items-center gap-1 shadow-lg">
+          <button
+            onClick={() => {
+              setViewMode('video');
+              if (videoRef.current && isPlaying) videoRef.current.play().catch(() => {});
+            }}
+            disabled={!detectedVideoUrl}
+            className={`flex-1 py-1.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+              viewMode === 'video'
+                ? 'bg-gradient-to-r from-cyan-500 to-indigo-600 text-black shadow-md shadow-cyan-500/20'
+                : detectedVideoUrl
+                ? 'text-slate-300 hover:text-white hover:bg-slate-800'
+                : 'text-slate-600 cursor-not-allowed opacity-50'
+            }`}
+          >
+            <Film className="w-3.5 h-3.5" />
+            <span>Finished Video</span>
+          </button>
+
+          <button
+            onClick={() => {
+              setViewMode('storyboard');
+              if (videoRef.current) videoRef.current.pause();
+            }}
+            className={`flex-1 py-1.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+              viewMode === 'storyboard'
+                ? 'bg-gradient-to-r from-purple-500 to-pink-600 text-white shadow-md shadow-purple-500/20'
+                : 'text-slate-300 hover:text-white hover:bg-slate-800'
+            }`}
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Storyboard</span>
+          </button>
+        </div>
+
         <div className="relative aspect-[9/16] rounded-[40px] overflow-hidden border-4 border-slate-800 shadow-2xl shadow-cyan-950/40 bg-black flex flex-col justify-between">
           {/* Top Mobile Notch / Speaker */}
           <div className="absolute top-2 left-1/2 -translate-x-1/2 w-24 h-4 bg-slate-900 rounded-full z-30 flex items-center justify-center">
@@ -144,60 +235,39 @@ export const MobileReelPreview: React.FC<MobileReelPreviewProps> = ({
               <span className="px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 text-[10px] font-mono border border-cyan-500/40">
                 9:16
               </span>
+              {viewMode === 'video' && (
+                <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-mono border border-emerald-500/40">
+                  H.264 MP4
+                </span>
+              )}
             </div>
             <div className="text-[11px] text-slate-400 font-mono">
-              Scene 0{currentScene?.sceneNumber || 1}/05
+              Scene 0{currentScene?.sceneNumber || 1}/0{scenes.length || 4}
             </div>
           </div>
 
-          {/* Dynamic Scene Visual Viewport */}
+          {/* Video / Visual Stage */}
           <div className="absolute inset-0 z-10 flex items-center justify-center overflow-hidden">
-            {currentScene && (
-              <div className="w-full h-full relative flex flex-col justify-center items-center text-center">
-                {/* Media Image / SVG Background */}
-                {currentScene.media.url ? (
-                  <img
-                    src={currentScene.media.url}
-                    alt={currentScene.media.label || 'Scene Media'}
-                    className={`absolute inset-0 w-full h-full object-${currentScene.media.fit} transition-transform duration-700 ${
-                      currentScene.animation === 'zoom_in'
-                        ? 'scale-105'
-                        : currentScene.animation === 'ken_burns'
-                        ? 'scale-110 translate-y-2'
-                        : 'scale-100'
-                    }`}
-                  />
-                ) : (
-                  <div className="absolute inset-0 cyber-grid bg-gradient-to-b from-slate-950 via-slate-900 to-black" />
-                )}
+            {viewMode === 'video' && detectedVideoUrl ? (
+              /* REAL HTML5 VIDEO PLAYER */
+              <div className="w-full h-full relative">
+                <video
+                  ref={videoRef}
+                  src={detectedVideoUrl}
+                  playsInline
+                  muted={isMuted}
+                  loop
+                  onPlay={() => setIsPlaying(true)}
+                  onPause={() => setIsPlaying(false)}
+                  onTimeUpdate={() => {
+                    if (videoRef.current) {
+                      setCurrentTime(videoRef.current.currentTime);
+                    }
+                  }}
+                  className="w-full h-full object-cover"
+                />
 
-                {/* Dark Vignette Overlay for Readability */}
-                <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/80 pointer-events-none" />
-
-                {/* Mobile Safe Area Overlay - Scene Label Badge (Top 16% Y) */}
-                <div className="absolute top-[16%] z-20 px-3 py-1 rounded-full bg-cyan-500/20 border border-cyan-500/50 text-[11px] font-bold text-cyan-300 uppercase tracking-widest backdrop-blur-md">
-                  {currentScene.block.replace('_', ' ')}
-                </div>
-
-                {/* Dynamic On-Screen Text Overlay */}
-                <div className="absolute top-[24%] px-6 z-20 max-w-[90%]">
-                  <h2 className="text-xl sm:text-2xl font-black text-white leading-tight drop-shadow-[0_4px_12px_rgba(0,0,0,0.9)] animate-in fade-in duration-300">
-                    {currentScene.textOverlays.find((t) => t.type === 'hook' || t.type === 'feature_callout')?.text ||
-                      currentScene.textOverlays[0]?.text ||
-                      project.title}
-                  </h2>
-                </div>
-
-                {/* CTA Action Overlay (for Scene 5) */}
-                {currentScene.block === 'CTA' && (
-                  <div className="absolute top-[48%] z-20 px-6 w-full flex justify-center">
-                    <div className="px-6 py-3 rounded-2xl bg-cyan-400 text-black font-black text-xs tracking-wide shadow-xl shadow-cyan-400/40 animate-pulse uppercase">
-                      {project.branding.brandHandle} • {currentScene.textOverlays.find((t) => t.type === 'cta')?.text || 'Save for your next project'}
-                    </div>
-                  </div>
-                )}
-
-                {/* Burned-in Animated Subtitles (Safe zone 71% Y) */}
+                {/* Subtitle Safe Area Overlay over Video */}
                 {showSubtitles && activeCue && (
                   <div className="absolute top-[71%] z-30 px-4 w-full flex justify-center pointer-events-none">
                     <div className="px-4 py-2 rounded-xl bg-black/90 border border-cyan-500/50 shadow-2xl backdrop-blur-md max-w-[92%]">
@@ -223,14 +293,80 @@ export const MobileReelPreview: React.FC<MobileReelPreviewProps> = ({
                     </div>
                   </div>
                 )}
-
-                {/* Watermark Logo / Handle */}
-                {project.branding.watermarkEnabled && (
-                  <div className="absolute top-[82%] right-4 z-20 text-[10px] font-mono text-cyan-400/80 bg-black/40 px-2 py-0.5 rounded backdrop-blur-sm">
-                    {project.branding.brandHandle}
-                  </div>
-                )}
               </div>
+            ) : (
+              /* STORYBOARD BLUEPRINT VIEW */
+              currentScene && (
+                <div className="w-full h-full relative flex flex-col justify-center items-center text-center">
+                  {/* Media Image / SVG Background */}
+                  {currentScene.media?.url && !currentScene.media.url.endsWith('.mp4') ? (
+                    <img
+                      src={currentScene.media.url}
+                      alt={currentScene.media.label || 'Scene Media'}
+                      className={`absolute inset-0 w-full h-full object-${currentScene.media.fit || 'cover'} transition-transform duration-700 ${
+                        currentScene.animation === 'zoom_in'
+                          ? 'scale-105'
+                          : currentScene.animation === 'ken_burns'
+                          ? 'scale-110 translate-y-2'
+                          : 'scale-100'
+                      }`}
+                    />
+                  ) : (
+                    <div className="absolute inset-0 cyber-grid bg-gradient-to-b from-slate-950 via-slate-900 to-black" />
+                  )}
+
+                  {/* Dark Vignette Overlay for Readability */}
+                  <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/80 pointer-events-none" />
+
+                  {/* Mobile Safe Area Overlay - Scene Label Badge (Top 16% Y) */}
+                  <div className="absolute top-[16%] z-20 px-3 py-1 rounded-full bg-cyan-500/20 border border-cyan-500/50 text-[11px] font-bold text-cyan-300 uppercase tracking-widest backdrop-blur-md">
+                    {currentScene.block.replace('_', ' ')}
+                  </div>
+
+                  {/* Dynamic On-Screen Text Overlay */}
+                  <div className="absolute top-[24%] px-6 z-20 max-w-[90%]">
+                    <h2 className="text-xl sm:text-2xl font-black text-white leading-tight drop-shadow-[0_4px_12px_rgba(0,0,0,0.9)] animate-in fade-in duration-300">
+                      {currentScene.textOverlays?.find((t) => t.type === 'hook' || t.type === 'feature_callout')?.text ||
+                        currentScene.textOverlays?.[0]?.text ||
+                        project.title}
+                    </h2>
+                  </div>
+
+                  {/* Burned-in Animated Subtitles (Safe zone 71% Y) */}
+                  {showSubtitles && activeCue && (
+                    <div className="absolute top-[71%] z-30 px-4 w-full flex justify-center pointer-events-none">
+                      <div className="px-4 py-2 rounded-xl bg-black/90 border border-cyan-500/50 shadow-2xl backdrop-blur-md max-w-[92%]">
+                        <p className="text-sm font-extrabold text-white tracking-wide uppercase leading-snug">
+                          {activeCue.text.split(' ').map((word, wIdx) => {
+                            const isEmph = activeCue.highlightWords?.some(
+                              (hw) => hw.toLowerCase() === word.toLowerCase()
+                            );
+                            return (
+                              <span
+                                key={wIdx}
+                                className={
+                                  isEmph
+                                    ? 'text-cyan-400 drop-shadow-[0_0_8px_#00f5ff] underline underline-offset-4'
+                                    : 'text-white'
+                                }
+                              >
+                                {word}{' '}
+                              </span>
+                            );
+                          })}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Watermark Logo / Handle */}
+                  {project.branding?.watermarkEnabled && (
+                    <div className="absolute top-[82%] right-4 z-20 text-[10px] font-mono text-cyan-400/80 bg-black/40 px-2 py-0.5 rounded backdrop-blur-sm">
+                      {project.branding.brandHandle}
+                    </div>
+                  )}
+                </div>
+              )
             )}
           </div>
 
@@ -256,7 +392,7 @@ export const MobileReelPreview: React.FC<MobileReelPreviewProps> = ({
                 max={duration}
                 step="0.1"
                 value={currentTime}
-                onChange={(e) => setCurrentTime(parseFloat(e.target.value))}
+                onChange={(e) => handleSeek(parseFloat(e.target.value))}
                 className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-400"
               />
               <div className="flex justify-between text-[10px] text-slate-400 font-mono">
@@ -311,10 +447,10 @@ export const MobileReelPreview: React.FC<MobileReelPreviewProps> = ({
             <div className="space-y-1">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 text-[10px] font-bold border border-cyan-500/40 uppercase">
-                  {project.templateSelection?.templateName || project.templateId.toUpperCase()} TEMPLATE
+                  {project.templateSelection?.templateName || project.templateId?.toUpperCase()} TEMPLATE
                 </span>
                 <span className="px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 text-[10px] font-bold border border-purple-500/40">
-                  {project.pillarId.replace(/-/g, ' ').toUpperCase()}
+                  {(project.pillarId || 'ai-tools').replace(/-/g, ' ').toUpperCase()}
                 </span>
                 <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-[10px] font-bold border border-amber-500/40">
                   🔒 REVIEW REQUIRED (21:00 IST)
@@ -325,15 +461,13 @@ export const MobileReelPreview: React.FC<MobileReelPreviewProps> = ({
               </h3>
             </div>
 
-            {onExport && (
-              <button
-                onClick={onExport}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-indigo-600 text-black font-extrabold text-xs shadow-lg shadow-cyan-500/25 hover:opacity-95 transition-all"
-              >
-                <Download className="w-4 h-4" />
-                Export 9:16 Reel
-              </button>
-            )}
+            <button
+              onClick={handleDownloadMp4}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-indigo-600 text-black font-extrabold text-xs shadow-lg shadow-cyan-500/25 hover:opacity-95 transition-all"
+            >
+              <Download className="w-4 h-4" />
+              Download MP4
+            </button>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-slate-800 text-xs">
@@ -343,7 +477,7 @@ export const MobileReelPreview: React.FC<MobileReelPreviewProps> = ({
             </div>
             <div>
               <span className="text-slate-400 text-[10px] block">Resolution</span>
-              <strong className="text-cyan-400 font-mono">{project.exportSettings.resolution.width}x{project.exportSettings.resolution.height}</strong>
+              <strong className="text-cyan-400 font-mono">1080x1920 (H.264)</strong>
             </div>
             <div>
               <span className="text-slate-400 text-[10px] block">Pacing & Duration</span>
@@ -353,7 +487,7 @@ export const MobileReelPreview: React.FC<MobileReelPreviewProps> = ({
               <span className="text-slate-400 text-[10px] block">QC Validation</span>
               <span className="inline-flex items-center gap-1 font-bold text-emerald-400">
                 <CheckCircle className="w-3.5 h-3.5" />
-                {project.qcReport?.passed ? 'Passed (10/10)' : `${project.qcReport?.fatalCount} Flags`}
+                {project.qcReport?.passed ? 'Passed (10/10)' : `${project.qcReport?.fatalCount || 0} Flags`}
               </span>
             </div>
           </div>
@@ -370,7 +504,7 @@ export const MobileReelPreview: React.FC<MobileReelPreviewProps> = ({
             <div className="p-3 rounded-xl bg-slate-900/70 border border-slate-800 space-y-1">
               <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Hook Strategy</span>
               <p className="text-white font-medium line-clamp-2">
-                "{project.scenes[0]?.audioSettings?.voiceoverText || project.scenes[0]?.textOverlays[0]?.text}"
+                "{project.scenes?.[0]?.audioSettings?.voiceoverText || project.scenes?.[0]?.textOverlays?.[0]?.text || project.title}"
               </p>
             </div>
 
@@ -426,7 +560,7 @@ export const MobileReelPreview: React.FC<MobileReelPreviewProps> = ({
               const isActive = idx === activeSceneIndex;
               return (
                 <div
-                  key={scene.id}
+                  key={scene.id || idx}
                   onClick={() => handleJumpToScene(idx)}
                   className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
                     isActive
@@ -442,7 +576,7 @@ export const MobileReelPreview: React.FC<MobileReelPreviewProps> = ({
                           : 'bg-slate-800 text-slate-400'
                       }`}
                     >
-                      0{scene.sceneNumber}
+                      0{scene.sceneNumber || idx + 1}
                     </span>
                     <div>
                       <div className="flex items-center gap-2">
@@ -453,18 +587,18 @@ export const MobileReelPreview: React.FC<MobileReelPreviewProps> = ({
                           {scene.durationSeconds}s
                         </span>
                         <span className="text-[10px] text-slate-400">
-                          &bull; {scene.media.type}
+                          &bull; {scene.media?.type || 'graphic'}
                         </span>
                       </div>
                       <p className="text-[11px] text-slate-300 line-clamp-1">
-                        "{scene.audioSettings.voiceoverText || scene.textOverlays[0]?.text}"
+                        "{scene.audioSettings?.voiceoverText || scene.textOverlays?.[0]?.text}"
                       </p>
                     </div>
                   </div>
 
                   <div className="text-right shrink-0">
                     <span className="text-[10px] font-mono text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded border border-purple-500/20">
-                      SFX: {scene.audioSettings.sfxType}
+                      SFX: {scene.audioSettings?.sfxType || 'none'}
                     </span>
                   </div>
                 </div>
@@ -481,7 +615,7 @@ export const MobileReelPreview: React.FC<MobileReelPreviewProps> = ({
               <span>Current Caption Cue</span>
             </h4>
             <span className="text-[10px] text-slate-400 font-mono">
-              Position: {project.captions.positionYPercent}% Y
+              Position: {project.captions?.positionYPercent || 71}% Y
             </span>
           </div>
           {activeCue ? (

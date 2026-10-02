@@ -457,7 +457,7 @@ export class VisualIntentEngine {
     <g transform="translate(470, 0)">
       <rect width="430" height="1020" rx="24" fill="#0b1329" stroke="${primaryColor}" stroke-width="2.5" />
       <rect width="430" height="64" rx="24" fill="#1e293b" />
-      <rect x="25" y="16" width="130" height="32" rx="16" fill="rgba(16 cleared, 185, 129, 0.2)" />
+      <rect x="25" y="16" width="130" height="32" rx="16" fill="rgba(16, 185, 129, 0.2)" />
       <text x="40" y="38" font-family="system-ui, -apple-system, sans-serif" font-size="16" font-weight="800" fill="#10B981">✓ MODERN</text>
       <text x="170" y="40" font-family="system-ui, -apple-system, sans-serif" font-size="20" font-weight="800" fill="${primaryColor}">Visual Canvas</text>
 
