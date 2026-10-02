@@ -10,29 +10,34 @@ interface PromptPresetsProps {
 export const PromptPresets: React.FC<PromptPresetsProps> = ({ onSelectPreset }) => {
   const presets = [
     {
-      topic: 'How to automate 24/7 client booking on WhatsApp with zero code',
-      pillarId: 'whatsapp-automation' as ContentPillarId,
-      audience: 'Local clinics, salons, and dental practices'
+      topic: '5 AI Tools That Save Hours Every Week',
+      pillarId: 'ai-tools' as ContentPillarId,
+      audience: 'Creators, developers & tech enthusiasts'
     },
     {
-      topic: 'Why your website gets 5,000 visitors but 0 phone calls (and how AI chat fixes it)',
-      pillarId: 'website-solutions' as ContentPillarId,
-      audience: 'Small business owners & home service contractors'
+      topic: 'New AI Models & Features You Should Know This Week',
+      pillarId: 'ai-news-update' as ContentPillarId,
+      audience: 'Tech founders, developers & builders'
     },
     {
-      topic: '3 manual business tasks costing you $1,500/month in wasted staff hours',
+      topic: 'How AI Can Turn a Messy Spreadsheet Into Useful Insights',
       pillarId: 'ai-automation' as ContentPillarId,
-      audience: 'Founders, agency owners & operations managers'
+      audience: 'Data analysts, managers & operators'
     },
     {
-      topic: 'How we turn Instagram Reel comments into qualified sales calls in 3 seconds',
-      pillarId: 'lead-generation' as ContentPillarId,
-      audience: 'Coaches, consultants & high-ticket B2B service firms'
+      topic: 'Top Useful AI Websites for Everyday Productivity',
+      pillarId: 'ai-tools' as ContentPillarId,
+      audience: 'Students, professionals & builders'
     },
     {
-      topic: 'FLASH.Ai Build Demo: Live Inbound Lead Hunter & Auto-Qualifier',
+      topic: 'How Autonomous AI Workflows Actually Connect APIs',
       pillarId: 'flash-builds' as ContentPillarId,
-      audience: 'Growth-focused founders seeking custom digital workflows'
+      audience: 'Engineers & workflow builders'
+    },
+    {
+      topic: 'Claude vs GPT: Key Differences in 30 Seconds',
+      pillarId: 'ai-tools' as ContentPillarId,
+      audience: 'AI practitioners & software engineers'
     }
   ];
 

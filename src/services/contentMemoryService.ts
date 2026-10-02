@@ -89,13 +89,13 @@ export class ContentMemoryService {
       },
       {
         id: 'mem-seed-3',
-        topic: 'Building a 24/7 AI Lead Qualifier in 60 Seconds with FLASH.Ai',
-        hook: 'Watch what happens when a prospect comments "AUTOMATE" on our Reel.',
+        topic: 'Connecting AI Models to Webhook Pipelines in 60 Seconds with FLASH.Ai',
+        hook: 'Watch what happens when you trigger an automated AI workflow with a single webhook.',
         formatId: 'ai-automation-demo',
         formatName: 'AI Automation Demo',
-        scriptConcept: 'Live trigger-to-DM demonstration qualifying high ticket intent in real time.',
-        visualConcept: 'Live screen recording showing comment notification triggering instant DM with custom button flow.',
-        pillarId: 'lead-generation',
+        scriptConcept: 'Live trigger-to-execution demonstration structuring unstructured payload in real time.',
+        visualConcept: 'Live screen recording showing webhook payload triggering instant LLM parsing with clean JSON output.',
+        pillarId: 'ai-automation',
         status: 'PUBLISHED',
         createdAt: new Date(Date.now() - 3 * 86400000).toISOString(),
         publishedDate: '2026-09-27'

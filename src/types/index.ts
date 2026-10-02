@@ -1,11 +1,14 @@
 export type ContentPillarId =
+  | 'ai-tools'
   | 'ai-automation'
+  | 'ai-news-update'
+  | 'practical-tutorials'
+  | 'ai-explainers'
+  | 'flash-builds'
   | 'business-growth'
   | 'website-solutions'
   | 'whatsapp-automation'
   | 'lead-generation'
-  | 'ai-tools'
-  | 'flash-builds'
   | 'behind-the-scenes';
 
 export type ContentStatus =
@@ -35,10 +38,17 @@ export type ToneType =
   | 'Problem-Agitate-Solve';
 
 export type CTAType =
+  | 'Save for Your Next Project'
+  | 'Save for your next project'
+  | 'Follow @flash_ai_digital'
+  | 'Explore Curated AI Tools'
+  | 'Try This AI Workflow'
+  | 'Which Tool Would You Use?'
+  | 'Check Link in Bio'
+  | 'Save for Later'
   | 'Book Strategy Call'
   | 'DM "AUTOMATE"'
   | 'Comment "GROWTH"'
-  | 'Check Link in Bio'
   | 'Free AI Audit'
   | 'WhatsApp Us Directly';
 

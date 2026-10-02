@@ -21,7 +21,6 @@ import type {
 } from '../types/reelProduction';
 import { instagramProviderManager, type InstagramPublishResult } from './instagramPublisher';
 import { contentMemoryService } from './contentMemoryService';
-import { FLASH_AI_BRAND } from '../constants/brandConfig';
 
 export type PipelinePublishingStatus =
   | 'DRAFT'
@@ -178,7 +177,7 @@ export class PublishingPipelineEngine {
       '#SmallBizTech'
     ];
 
-    const caption = `🚀 ${project.title}\n\n${project.scenes.map((s) => `▪ ${s.textOverlays[0]?.text || s.block}`).join('\n')}\n\n👉 ${FLASH_AI_BRAND.ctaStyles[0].label} to automate this workflow.\n\n${hashtags.join(' ')}`;
+    const caption = `🚀 ${project.title}\n\n${project.scenes.map((s) => `▪ ${s.textOverlays[0]?.text || s.block}`).join('\n')}\n\n📌 Save this for your next project & follow @flash_ai_digital for daily AI discoveries!\n\n${hashtags.join(' ')}`;
 
     const initialStatus: PipelinePublishingStatus = scheduledFor
       ? 'SCHEDULED'

@@ -175,7 +175,7 @@ export class AutoEditingEngine {
       // High-Impact CTA Button Overlay (Safe at 48% Y)
       overlays.push({
         id: `cta-button-${sceneNumber}-${Date.now()}`,
-        text: ctaText || `DM "AUTOMATE"`,
+        text: ctaText || `Save for your next project`,
         type: 'cta',
         position: { xPercent: 10, yPercent: 48 },
         fontSize: 52,

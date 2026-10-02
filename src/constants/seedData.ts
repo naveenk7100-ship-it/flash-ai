@@ -11,65 +11,65 @@ import type {
 export const INITIAL_IDEAS: ContentIdea[] = [
   {
     id: 'idea-1',
-    title: 'How to Build a WhatsApp AI Booking Assistant in 15 Minutes',
-    pillarId: 'whatsapp-automation',
+    title: '5 AI Tools That Save Hours Every Week',
+    pillarId: 'ai-tools',
     platform: 'Instagram Reels',
     status: 'SCRIPT',
     scheduledDate: '2026-09-28',
-    targetAudience: 'Doctors, Salons, and Appointment-based businesses',
-    estimatedDuration: '60s',
-    notes: 'Highlight 24/7 instant response and zero missed bookings. Show live phone screen demo.',
+    targetAudience: 'Creators, developers & tech enthusiasts',
+    estimatedDuration: '30s',
+    notes: 'Highlight rapid PDF parsing, voice note to documentation, and spreadsheet analysis. Dynamic screen cards.',
     createdAt: '2026-09-25T10:00:00.000Z',
     updatedAt: '2026-09-25T14:30:00.000Z'
   },
   {
     id: 'idea-2',
-    title: '5 Costly Manual Mistakes Local Business Owners Make Daily',
+    title: 'How AI Can Turn a Messy Spreadsheet Into Useful Insights',
     pillarId: 'ai-automation',
     platform: 'Instagram Reels',
     status: 'IDEA',
     scheduledDate: '2026-09-30',
-    targetAudience: 'Local business owners and retail operators',
+    targetAudience: 'Data analysts, managers & operators',
     estimatedDuration: '30s',
-    notes: 'Focus on manual data entry, missed inquiries after 8 PM, and delayed invoice follow-ups.',
+    notes: 'Focus on automated anomaly detection, natural language querying, and instant chart generation.',
     createdAt: '2026-09-26T08:15:00.000Z',
     updatedAt: '2026-09-26T08:15:00.000Z'
   },
   {
     id: 'idea-3',
-    title: 'Why Slow Websites Destroy 60% of Your Ad Budget in 2026',
-    pillarId: 'website-solutions',
+    title: 'New AI Models & Features You Should Know This Week',
+    pillarId: 'ai-news-update',
     platform: 'Instagram Carousels',
     status: 'IDEA',
     scheduledDate: '2026-10-02',
-    targetAudience: 'E-commerce founders and service providers spending on Meta ads',
-    notes: '10-slide carousel teardown comparing 4-second load time vs 0.8s load time conversion rates.',
+    targetAudience: 'Tech founders, developers & builders',
+    notes: '10-slide carousel breakdown comparing new benchmark scores, coding latency, and context window sizes.',
     createdAt: '2026-09-26T09:00:00.000Z',
     updatedAt: '2026-09-26T09:00:00.000Z'
   },
   {
     id: 'idea-4',
-    title: 'FLASH.Ai Client Build: Lead Auto-Qualifier for Real Estate Agency',
-    pillarId: 'flash-builds',
+    title: 'Top Useful AI Websites for Everyday Productivity',
+    pillarId: 'ai-tools',
     platform: 'Instagram Reels',
     status: 'APPROVED',
     scheduledDate: '2026-09-27',
-    targetAudience: 'High-ticket service firms & Realtors',
-    estimatedDuration: '60s',
-    notes: 'Case study format: 400+ leads processed, 80% spam filtered, sales team only speaks to qualified buyers.',
+    targetAudience: 'Students, professionals & creators',
+    estimatedDuration: '30s',
+    notes: 'Curated list of 3 high-utility web tools for instant UI generation, background cleanup, and document summarization.',
     createdAt: '2026-09-24T11:00:00.000Z',
     updatedAt: '2026-09-26T12:00:00.000Z'
   },
   {
     id: 'idea-5',
-    title: 'Behind the Scenes: Inside the FLASH.Ai Multi-Agent Architecture',
-    pillarId: 'behind-the-scenes',
+    title: 'How Autonomous AI Workflows Actually Connect APIs',
+    pillarId: 'flash-builds',
     platform: 'Instagram Reels',
     status: 'IDEA',
     scheduledDate: '2026-10-05',
-    targetAudience: 'Tech founders, developers & creators',
+    targetAudience: 'Engineers, builders & automation architects',
     estimatedDuration: '30s',
-    notes: 'Show our dual-monitor terminal, code architecture, and AI agents collaborating in real-time.',
+    notes: 'Visual breakdown showing webhook trigger nodes, LLM schema parsing, and database sync.',
     createdAt: '2026-09-26T11:30:00.000Z',
     updatedAt: '2026-09-26T11:30:00.000Z'
   }
@@ -79,13 +79,13 @@ export const INITIAL_CONTENT_ITEMS: ContentItem[] = [
   {
     id: 'content-item-1',
     ideaId: 'idea-approval-1',
-    title: 'Turn Instagram Comments into Booked Sales Calls with AI',
-    pillarId: 'lead-generation',
+    title: '5 AI Tools That Save Hours Every Week',
+    pillarId: 'ai-tools',
     platform: 'Instagram Reels',
     videoDuration: '30s',
     tone: 'Authoritative & Sharp',
-    targetAudience: 'Coaches, Agencies, and B2B Consultants',
-    cta: 'DM "AUTOMATE"',
+    targetAudience: 'Creators, developers & tech enthusiasts',
+    cta: 'Save for your next project',
     status: 'REVIEW',
     scheduledDate: '2026-09-28',
     scheduledTime: '11:30',
@@ -98,42 +98,42 @@ export const INITIAL_CONTENT_ITEMS: ContentItem[] = [
     variant: {
       id: 'var-1',
       platform: 'Instagram Reels',
-      hook: 'If you still reply to Instagram DMs manually, you are leaving 70% of your revenue on the table.',
-      hookRetentionCue: 'Start with a fast zoom on a smartphone showing 50 unread DMs blowing up.',
-      videoConcept: 'Fast-paced demonstration showing how a user comments "AUTOMATE" and instantly receives an AI-guided consultation link and qualification question in 3 seconds.',
-      shortScript: `[00:00 - 00:03] HOOK: If you still reply to Instagram DMs manually, you are losing 70% of your warmest leads.
-[00:03 - 00:09] PROBLEM: When someone comments on your Reel at 11 PM, they want an answer right now. Waiting 8 hours to reply means they already hired your competitor.
-[00:09 - 00:18] SOLUTION: Here is how FLASH.Ai solves this: When a prospect comments "AUTOMATE", our agent instantly delivers the exact resource, asks 2 qualification questions, and schedules them into your calendar.
-[00:18 - 00:25] VALUE: Zero manual triage. 24/7 speed. 3x higher booking rate.
-[00:25 - 00:30] CTA: DM "AUTOMATE" and we'll send you our free DM automation setup blueprint!`,
+      hook: 'These 5 AI tools will save you at least 15 hours every single week.',
+      hookRetentionCue: 'Fast kinetic card transitions showing 5 clean AI tool dashboards with instant utility.',
+      videoConcept: 'High tempo breakdown of 5 practical AI tools for document parsing, intelligent code generation, voice synthesis, automated research, and spreadsheet analysis.',
+      shortScript: `[00:00 - 00:04] HOOK: These 5 AI tools will save you at least 15 hours every single week. Save this before you forget.
+[00:04 - 00:10] TOOL 1: Tool number one extracts clean tables and structured data directly from messy PDFs in seconds.
+[00:10 - 00:16] TOOL 2: Tool number two turns raw messy voice notes into formatted documentation and team tasks.
+[00:16 - 00:22] TOOL 3: Tool number three organizes unstructured spreadsheets and highlights anomalies automatically.
+[00:22 - 00:26] TOOL 4-5: Plus tools for instant code refactoring and automated research summaries.
+[00:26 - 00:30] CTA: These tools are moving AI directly into everyday workflows. Follow @flash_ai_digital for daily discoveries!`,
       onScreenText: [
-        '00:00 - ⚠️ Manual DMs = Lost Revenue',
-        '00:04 - ⏰ Instant Reply vs 8-Hour Delay',
-        '00:10 - 🤖 AI Lead Auto-Qualifier in Action',
-        '00:20 - 📈 3x Higher Booking Rate',
-        '00:26 - 👉 DM "AUTOMATE" for Free Blueprint'
+        '00:00 - ⚡ 5 AI Tools (Save 15+ Hours/Wk)',
+        '00:05 - 1. PDF ➡️ Structured Data 📄',
+        '00:11 - 2. Voice Note ➡️ Formatted Docs 🎙️',
+        '00:17 - 3. Messy CSV ➡️ Smart Insights 📊',
+        '00:23 - 4. Automated Research & Code 🛠️',
+        '00:27 - 💡 Save for Later | @flash_ai_digital'
       ],
-      caption: `Most founders lose high-ticket clients not because their service is bad, but because they reply too slow. ⏳
+      caption: `5 AI tools that make everyday work 10x faster 👇
 
-When a warm prospect reaches out on Instagram at 11:30 PM, they want an answer immediately. If you reply the next morning, the buying impulse is gone.
+Stop wasting hours on manual tasks that modern AI tools can handle in seconds:
 
-Here is what our FLASH.Ai automated lead qualification engine does in 2 seconds flat:
-1️⃣ Detects comment triggers automatically
-2️⃣ Sends private DM with personalized resource
-3️⃣ Qualifies budget & timeline in 2 natural questions
-4️⃣ Syncs booking straight to your calendar & CRM
+⚡ 1. PDF Data Extractor: Pull structured tables and numbers from raw documents.
+⚡ 2. Voice-to-Doc Engine: Transform voice notes into formatted SOPs.
+⚡ 3. Smart Sheet Analyzer: Query raw CSV files with natural language.
+⚡ 4. Code & Refactor Assistant: Instant syntax and logic optimizations.
+⚡ 5. Research Synthesizer: Summarize multi-page papers in seconds.
 
-Stop losing revenue to slow response times.
+Which of these 5 would help your workflow the most?
 
-💬 DM "AUTOMATE" to get our step-by-step DM Automation Blueprint!
-
----
-Follow @flash.ai for real business automation workflows.`,
-      cta: 'DM "AUTOMATE" to get the free setup blueprint.',
+📌 Save this Reel for later!
+Follow @flash_ai_digital for daily AI tools, model updates & tutorials.`,
+      cta: 'Save this for your next project and follow @flash_ai_digital!',
       hashtags: {
-        niche: ['#AIAutomation', '#InstagramAutomation', '#LeadGenEngine', '#FLASHai'],
-        broad: ['#BusinessAutomation', '#SmallBusinessGrowth', '#MarketingTech'],
-        viral: ['#AgencyGrowth', '#SalesFunnel', '#ProductivityHacks']
+        niche: ['#AITools', '#ProductivityTools', '#UsefulWebsites', '#FLASHai'],
+        broad: ['#ArtificialIntelligence', '#MachineLearning', '#TechTrends'],
+        viral: ['#TechReels', '#FutureOfWork', '#AIEveryday']
       },
       qualityScore: 98,
       usedRealAI: true,
@@ -143,13 +143,13 @@ Follow @flash.ai for real business automation workflows.`,
   {
     id: 'content-item-2',
     ideaId: 'idea-approval-2',
-    title: '3 Zero-Cost AI Workflows Every Small Business Should Run This Week',
-    pillarId: 'ai-tools',
+    title: 'How AI Can Turn a Messy Spreadsheet Into Useful Insights',
+    pillarId: 'ai-automation',
     platform: 'Instagram Reels',
     videoDuration: '30s',
     tone: 'Educational & Step-by-Step',
-    targetAudience: 'Small business owners, solo founders, freelancers',
-    cta: 'Check Link in Bio',
+    targetAudience: 'Data analysts, managers & operators',
+    cta: 'Save for your next project',
     status: 'APPROVED',
     scheduledDate: '2026-09-27',
     scheduledTime: '18:45',
@@ -162,38 +162,35 @@ Follow @flash.ai for real business automation workflows.`,
     variant: {
       id: 'var-2',
       platform: 'Instagram Reels',
-      hook: 'These 3 free AI tools will save your business at least 20 hours every single week.',
-      hookRetentionCue: 'Presenter points up as 3 neon glowing tool cards appear on screen with sound effects.',
-      videoConcept: 'High tempo breakdown of 3 practical AI tools for document parsing, instant voice note transcription to SOP, and automated invoice extraction.',
-      shortScript: `[00:00 - 00:04] HOOK: These 3 free AI tools will save your business 20 hours a week. Bookmark this before you forget.
-[00:04 - 00:14] TOOL 1: Tool number one is automated voice-to-SOP. Record a messy 2-minute voice note, and it turns into a formatted operational procedure and team task in ClickUp.
-[00:14 - 00:24] TOOL 2: Tool number two is multi-modal invoice reader. Take a photo of any receipt, and it auto-logs vendor, tax, and total directly into your Google Sheet.
-[00:24 - 00:34] TOOL 3: Tool number three is 24/7 customer triage agent that handles first-line inquiries across WhatsApp & Instagram.
-[00:34 - 00:45] CTA: We built a curated library of these 20+ automation templates. Tap the link in bio to grab your free copy!`,
+      hook: 'Before AI: 4 hours formatting messy spreadsheet columns. After: 3 seconds.',
+      hookRetentionCue: 'Split screen showing messy raw unformatted data instantly transforming into clean visual graphs.',
+      videoConcept: 'Visual transformation showing messy unorganized rows converted into categorized data and automated charts in 3 seconds.',
+      shortScript: `[00:00 - 00:04] HOOK: Before AI: 4 hours formatting messy spreadsheet columns. After: 3 seconds.
+[00:04 - 00:12] THE PROBLEM: Raw exports come with missing headers, mismatched dates, and inconsistent categories.
+[00:12 - 00:22] THE SOLUTION: Feed the raw data into an AI reasoning pipeline. It automatically parses schemas, normalizes formats, and generates instant executive charts.
+[00:22 - 00:30] CTA: Save this workflow for your next spreadsheet project and follow @flash_ai_digital!`,
       onScreenText: [
-        '00:00 - 3 Free AI Tools (Save 20 hrs/wk) ⏱️',
-        '00:05 - 1. Voice Note ➡️ Standard Operating Procedure 🎙️',
-        '00:15 - 2. Receipt Scan ➡️ Auto Spreadsheet 📊',
-        '00:25 - 3. Multi-Channel 24/7 AI Triage 🤖',
-        '00:35 - Free Template Library in Bio 🔗'
+        '00:00 - 📊 Messy Spreadsheet ➡️ Clean Insights',
+        '00:05 - ⚠️ Unformatted Rows & Mismatched Data',
+        '00:13 - ⚡ AI Auto-Normalization in 3 Seconds',
+        '00:24 - 💡 Save for Later | @flash_ai_digital'
       ],
-      caption: `Stop wasting founder hours on admin tasks a smart script can do in 3 seconds. ⚡
+      caption: `Never spend hours cleaning up spreadsheet columns manually again. 📊
 
-Here are 3 zero-cost AI automations every small business should run:
-🔹 Voice-to-SOP: Turn raw ramblings into crystal-clear team documentation.
-🔹 Smart Receipt Parser: Never manually type expense receipts into spreadsheets again.
-🔹 First-Line Customer Triage: Instant replies across Instagram and WhatsApp without hiring extra support.
+Here is how modern AI models turn messy raw CSV files into executive insights in seconds:
+🔹 Instant schema detection
+🔹 Automatic data normalization
+🔹 Zero-shot trend & anomaly highlighting
 
-Which of these 3 would help your workflow the most? Drop your answer in the comments! 👇
-
-🔗 Grab our full curated AI Automation Toolkit from the link in bio (@flash.ai).`,
-      cta: 'Tap the link in bio to download the complete AI Automation Toolkit.',
+📌 Save this workflow for later!
+Follow @flash_ai_digital for practical AI tips & workflows.`,
+      cta: 'Save this workflow for your next project!',
       hashtags: {
-        niche: ['#AIToolsForBusiness', '#WorkflowAutomation', '#NoCodeAI', '#SmallBizOps'],
-        broad: ['#ProductivityTools', '#BusinessTech', '#TechTrends2026', '#AutomationEngine'],
+        niche: ['#DataAnalytics', '#SpreadsheetHacks', '#AIAutomation', '#FLASHai'],
+        broad: ['#ProductivityTools', '#BusinessTech', '#TechTrends2026'],
         viral: ['#WorkSmarter', '#StartupGrowth', '#AITools']
       },
-      qualityScore: 95,
+      qualityScore: 96,
       usedRealAI: true,
       modelName: 'gemini-2.0-flash'
     }
@@ -437,15 +434,15 @@ export const INITIAL_SETTINGS: AutomationSetting = {
   },
   brandPreferences: {
     brandName: 'FLASH.Ai',
-    tagline: 'AI Automation & Digital Solutions',
-    targetAudience: 'Small businesses, local clinics, startups, creators and business owners',
-    primaryGeography: 'India, US, Global Remote',
-    defaultCTA: 'DM "AUTOMATE"',
-    customCTALink: 'https://flash.ai/audit',
+    tagline: 'Curated AI Tools & Autonomous Workflows',
+    targetAudience: 'Creators, developers, founders & productivity seekers',
+    primaryGeography: 'Global, US, India Remote',
+    defaultCTA: 'Save for Your Next Project',
+    customCTALink: 'https://flash.ai',
     whatsappNumber: '+91 98000 00000',
-    brandKeywords: ['AI Automation', 'Speed', 'Direct ROI', 'Zero Busywork', 'WhatsApp Systems'],
-    forbiddenWords: ['Crypto', 'Guaranteed Rich Overnight', 'Cheap', 'Free Forever'],
-    defaultHashtags: ['#FLASHai', '#AIAutomation', '#BusinessGrowth', '#SmallBizTech', '#AutomationTools']
+    brandKeywords: ['AI Tools', 'Model Updates', 'Productivity', 'Agentic Workflows', 'Tutorials'],
+    forbiddenWords: ['Crypto', 'Guaranteed Rich Overnight', 'Get Rich Quick', 'Spam DM'],
+    defaultHashtags: ['#FLASHai', '#AITools', '#AIAutomation', '#TechTrends', '#Productivity']
   },
   publishing: {
     defaultPostingHours: ['11:30', '18:45', '21:15'],

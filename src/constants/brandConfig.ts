@@ -89,17 +89,17 @@ export const FLASH_AI_BRAND: BrandConfig = {
   brandName: 'FLASH.Ai',
   instagramHandle: 'flash_ai_digital',
   instagramUrl: 'https://instagram.com/flash_ai_digital',
-  tagline: 'Practical AI Automation & Digital Systems for High-Growth Businesses',
-  niche: 'AI, automation, AI tools, business automation, productivity, websites, workflows and practical AI use cases.',
+  tagline: 'Curated AI Tools, Autonomous Workflows & Practical AI Intelligence',
+  niche: 'AI tools, product launches, model updates, AI news, productivity workflows, tutorials, and practical explainers.',
   focusAreas: [
-    'AI Agents & Autonomy',
-    'Business Process Automation',
-    'High-Converting AI Websites',
-    'WhatsApp & CRM Automation',
-    'Inbound Lead Capture Systems',
-    'Productivity & AI Tools Discovery',
-    'Workflow Architecture & SOPs',
-    'Client Case Studies & Real ROI'
+    'AI Tools & Useful Websites',
+    'AI Model Updates & Benchmarks',
+    'Autonomous Automation Workflows',
+    'Productivity & Everyday AI Use-Cases',
+    'Practical AI Tutorials & How-Tos',
+    'Simple AI Explainers & Breakdowns',
+    'AI Industry News & Breakthroughs',
+    'Workflow Architecture & Node Pipelines'
   ],
   tone: {
     primary: 'Authoritative, practical, creator-like, modern and fast-paced',
@@ -114,39 +114,39 @@ export const FLASH_AI_BRAND: BrandConfig = {
       'Over-the-top motivational speeches',
       'Get-rich-quick claims or unrealistic revenue promises',
       'Fake testimonials or fabricated metrics',
-      'Generic corporate slide decks'
+      'Aggressive hard-sell pitches and spammy CTAs'
     ]
   },
   ctaStyles: [
     {
-      id: 'dm-automate',
-      label: 'DM "AUTOMATE"',
-      keyword: 'AUTOMATE',
-      actionDescription: 'Direct Message automated lead intake and strategy blueprint'
+      id: 'save-for-later',
+      label: 'Save for Your Next Project',
+      keyword: 'SAVE',
+      actionDescription: 'Bookmark tool discovery and reference guide'
     },
     {
-      id: 'comment-workflow',
-      label: 'Comment "WORKFLOW"',
+      id: 'follow-daily',
+      label: 'Follow @flash_ai_digital',
+      keyword: 'FOLLOW',
+      actionDescription: 'Daily AI tools, model updates, and practical workflows'
+    },
+    {
+      id: 'explore-tools',
+      label: 'Explore Curated AI Tools',
+      keyword: 'TOOLS',
+      actionDescription: 'Access curated breakdown of high-utility AI apps'
+    },
+    {
+      id: 'try-workflow',
+      label: 'Try This AI Workflow',
       keyword: 'WORKFLOW',
-      actionDescription: 'Automated comment trigger sending direct access link to workflow template'
+      actionDescription: 'Step-by-step workflow blueprint and prompt setup'
     },
     {
-      id: 'comment-growth',
-      label: 'Comment "GROWTH"',
-      keyword: 'GROWTH',
-      actionDescription: 'Instant DM sending case study breakdown and audit checklist'
-    },
-    {
-      id: 'book-call',
-      label: 'Book Strategy Call',
-      keyword: 'STRATEGY',
-      actionDescription: 'Direct calendar link in bio for high-ticket implementation audit'
-    },
-    {
-      id: 'free-audit',
-      label: 'Free AI Audit',
-      keyword: 'AUDIT',
-      actionDescription: 'Free 5-minute automated business bottleneck evaluation'
+      id: 'comment-favorite',
+      label: 'Which Tool Would You Use?',
+      keyword: 'COMMENT',
+      actionDescription: 'Community discussion on everyday AI workflows'
     }
   ],
   formatSpecs: {

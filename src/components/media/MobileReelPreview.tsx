@@ -191,8 +191,8 @@ export const MobileReelPreview: React.FC<MobileReelPreviewProps> = ({
                 {/* CTA Action Overlay (for Scene 5) */}
                 {currentScene.block === 'CTA' && (
                   <div className="absolute top-[48%] z-20 px-6 w-full flex justify-center">
-                    <div className="px-6 py-3 rounded-2xl bg-cyan-400 text-black font-black text-sm tracking-wide shadow-xl shadow-cyan-400/40 animate-pulse uppercase">
-                      {project.branding.brandHandle} • {currentScene.textOverlays.find((t) => t.type === 'cta')?.text || 'DM "AUTOMATE"'}
+                    <div className="px-6 py-3 rounded-2xl bg-cyan-400 text-black font-black text-xs tracking-wide shadow-xl shadow-cyan-400/40 animate-pulse uppercase">
+                      {project.branding.brandHandle} • {currentScene.textOverlays.find((t) => t.type === 'cta')?.text || 'Save for your next project'}
                     </div>
                   </div>
                 )}
@@ -303,16 +303,24 @@ export const MobileReelPreview: React.FC<MobileReelPreviewProps> = ({
         </div>
       </div>
 
-      {/* Right Side: Scene Inspector, Timeline Diagnostics & QC Status */}
+      {/* Right Side: Information Matrix & Diagnostics */}
       <div className="flex-1 space-y-4 w-full">
         {/* Project Header & Template Info */}
         <div className="glass-card p-5 rounded-2xl border border-slate-800 space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <span className="px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 text-xs font-bold border border-cyan-500/40">
-                {project.templateId.toUpperCase()} TEMPLATE
-              </span>
-              <h3 className="text-base sm:text-lg font-black text-white mt-1">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 text-[10px] font-bold border border-cyan-500/40 uppercase">
+                  {project.templateSelection?.templateName || project.templateId.toUpperCase()} TEMPLATE
+                </span>
+                <span className="px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 text-[10px] font-bold border border-purple-500/40">
+                  {project.pillarId.replace(/-/g, ' ').toUpperCase()}
+                </span>
+                <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-[10px] font-bold border border-amber-500/40">
+                  🔒 REVIEW REQUIRED (21:00 IST)
+                </span>
+              </div>
+              <h3 className="text-base sm:text-lg font-black text-white">
                 {project.title}
               </h3>
             </div>
@@ -345,10 +353,60 @@ export const MobileReelPreview: React.FC<MobileReelPreviewProps> = ({
               <span className="text-slate-400 text-[10px] block">QC Validation</span>
               <span className="inline-flex items-center gap-1 font-bold text-emerald-400">
                 <CheckCircle className="w-3.5 h-3.5" />
-                {project.qcReport?.passed ? 'Passed' : `${project.qcReport?.fatalCount} Flags`}
+                {project.qcReport?.passed ? 'Passed (10/10)' : `${project.qcReport?.fatalCount} Flags`}
               </span>
             </div>
           </div>
+        </div>
+
+        {/* AI Information & Production Plan Diagnostics */}
+        <div className="glass-card p-5 rounded-2xl border border-slate-800 space-y-3">
+          <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-cyan-400" />
+            <span>AI Information Plan & Production Metadata</span>
+          </h4>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+            <div className="p-3 rounded-xl bg-slate-900/70 border border-slate-800 space-y-1">
+              <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Hook Strategy</span>
+              <p className="text-white font-medium line-clamp-2">
+                "{project.scenes[0]?.audioSettings?.voiceoverText || project.scenes[0]?.textOverlays[0]?.text}"
+              </p>
+            </div>
+
+            <div className="p-3 rounded-xl bg-slate-900/70 border border-slate-800 space-y-1">
+              <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Why Selected (Template Engine)</span>
+              <p className="text-cyan-300 font-medium line-clamp-2">
+                {project.templateSelection?.reason || 'Semantically matched with AI tool capabilities and educational pacing.'}
+              </p>
+            </div>
+
+            <div className="p-3 rounded-xl bg-slate-900/70 border border-slate-800 space-y-1">
+              <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Voice & Audio Model</span>
+              <p className="text-emerald-300 font-medium">
+                ElevenLabs Liam (TX3LPaxmHKxFdv7VOQHJ) &bull; ~150 WPM Creator Pacing
+              </p>
+            </div>
+
+            <div className="p-3 rounded-xl bg-slate-900/70 border border-slate-800 space-y-1">
+              <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Captions & Visual Flow</span>
+              <p className="text-purple-300 font-medium">
+                71% Y Safe Zone &bull; Word-Level Kinetic Highlighting &bull; 9:16 Canvas
+              </p>
+            </div>
+          </div>
+
+          {/* Visual Highlights Badges */}
+          {project.templateSelection?.visualHighlights && project.templateSelection.visualHighlights.length > 0 && (
+            <div className="pt-2 border-t border-slate-800/80 flex flex-wrap items-center gap-1.5">
+              <span className="text-[10px] text-slate-400 font-bold uppercase mr-1">Visual Highlights:</span>
+              {project.templateSelection.visualHighlights.map((hl, hIdx) => (
+                <span key={hIdx} className="px-2 py-0.5 rounded-md bg-cyan-950/60 text-cyan-300 border border-cyan-500/30 text-[10px] font-mono">
+                  {hl}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Scene Timeline Navigator */}

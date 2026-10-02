@@ -371,7 +371,7 @@ export class ApprovalWorkflowEngine {
       '#Workflows'
     ];
 
-    const caption = `🚀 ${project.title}\n\n${project.scenes.map((s) => `▪ ${s.textOverlays[0]?.text || s.block}`).join('\n')}\n\n👉 Comment "AUTOMATE" or DM us to install this AI workflow.\n\n${hashtags.join(' ')}`;
+    const caption = `🚀 ${project.title}\n\n${project.scenes.map((s) => `▪ ${s.textOverlays[0]?.text || s.block}`).join('\n')}\n\n📌 Save this Reel for later & follow @flash_ai_digital for daily AI tools and workflows!\n\n${hashtags.join(' ')}`;
 
     const reelId = `reel-${project.id}-${Date.now()}`;
     const record: ReviewableReelRecord = {

@@ -2,131 +2,99 @@ import type { ContentPillar, ContentAngle } from '../types';
 
 export const CONTENT_PILLARS: ContentPillar[] = [
   {
-    id: 'ai-automation',
-    name: 'AI Automation',
-    description: 'Replacing manual business busywork with intelligent agentic workflows and automated pipelines.',
-    color: 'from-cyan-500 to-blue-600',
-    badgeBg: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30',
-    borderColor: 'border-cyan-500/40',
-    iconName: 'Cpu',
-    defaultAudience: 'Small business owners & operations managers',
-    suggestedTopics: [
-      'How to automate customer onboarding in under 5 minutes with AI',
-      '3 manual tasks costing your business $2,000/month (and how to automate them)',
-      'Automated invoice & receipt processing using AI vision models',
-      'How AI agents handle 80% of support tickets automatically'
-    ]
-  },
-  {
-    id: 'business-growth',
-    name: 'Business Growth',
-    description: 'Scaling revenue, operational efficiency, and customer lifetime value using modern tech systems.',
-    color: 'from-emerald-500 to-teal-600',
-    badgeBg: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30',
-    borderColor: 'border-emerald-500/40',
-    iconName: 'TrendingUp',
-    defaultAudience: 'Founders, agency owners & service businesses',
-    suggestedTopics: [
-      'The 10x leverage rule: Why hiring more people is no longer the first answer',
-      'How local businesses double retention with automated follow-ups',
-      '5 business bottlenecks AI solves overnight in 2026',
-      'The exact tech stack scaling our digital agency this year'
-    ]
-  },
-  {
-    id: 'website-solutions',
-    name: 'Website Solutions',
-    description: 'High-converting websites, landing page teardowns, interactive UI, and speed optimizations.',
-    color: 'from-indigo-500 to-violet-600',
-    badgeBg: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/30',
-    borderColor: 'border-indigo-500/40',
-    iconName: 'Layout',
-    defaultAudience: 'Local shops, clinics, service providers & startups',
-    suggestedTopics: [
-      '3 reasons your website gets 1,000 visitors but 0 phone calls',
-      'Why modern websites need instant AI chat instead of boring contact forms',
-      'Before & After: Redesigning a local clinic landing page for 3x conversions',
-      'How page speed under 1s directly boosts Google ranking & ad ROI'
-    ]
-  },
-  {
-    id: 'whatsapp-automation',
-    name: 'WhatsApp Automation',
-    description: 'Direct response chatbots, instant lead qualification, catalog ordering, and smart appointment booking.',
-    color: 'from-green-500 to-emerald-600',
-    badgeBg: 'bg-green-500/10 text-green-400 border-green-500/30',
-    borderColor: 'border-green-500/40',
-    iconName: 'MessageSquare',
-    defaultAudience: 'D2C brands, doctors, salons, real estate & local stores',
-    suggestedTopics: [
-      'Never miss a midnight lead: 24/7 WhatsApp AI booking assistant',
-      'How our WhatsApp automation recovered $4,500 in abandoned carts in 48 hours',
-      'Zero to automated appointments: WhatsApp Cloud API walkthrough',
-      'Broadcasting updates with 98% open rates using WhatsApp business API'
-    ]
-  },
-  {
-    id: 'lead-generation',
-    name: 'Lead Generation',
-    description: 'Attracting high-intent inquiries, inbound funnels, DM automation, and conversion mechanics.',
-    color: 'from-amber-500 to-orange-600',
-    badgeBg: 'bg-amber-500/10 text-amber-400 border-amber-500/30',
-    borderColor: 'border-amber-500/40',
-    iconName: 'Zap',
-    defaultAudience: 'B2B consultants, real estate agents & high-ticket services',
-    suggestedTopics: [
-      'How to turn Instagram Reels comments into qualified sales calls automatically',
-      'The DM trigger keyword funnel: Step-by-step setup',
-      'Why cold outreach is dying and interactive inbound lead magnets are winning',
-      'Scraping & enriching high-intent B2B leads ethically with AI'
-    ]
-  },
-  {
     id: 'ai-tools',
-    name: 'AI Tools',
-    description: 'Curated reviews, practical tutorials, and breakdowns of the newest AI software for real business ROI.',
+    name: 'AI Tools & Utilities',
+    description: 'Curated reviews, practical breakdowns, and feature walkthroughs of the newest AI software and useful websites.',
     color: 'from-purple-500 to-fuchsia-600',
     badgeBg: 'bg-purple-500/10 text-purple-400 border-purple-500/30',
     borderColor: 'border-purple-500/40',
     iconName: 'Wrench',
-    defaultAudience: 'Creators, tech enthusiasts & solopreneurs',
+    defaultAudience: 'Creators, developers & productivity enthusiasts',
     suggestedTopics: [
-      'Top 5 AI tools every small business should start using this week',
-      'Claude 3.5 Sonnet vs GPT-4o vs Gemini 2.0: Which one for coding & workflows?',
-      'Free AI tools that replace expensive $99/mo SaaS subscriptions',
-      'Turn your voice notes into complete SOPs & emails with this AI tool'
+      '5 AI Tools That Save Hours Every Week',
+      'Top Useful AI Websites for Everyday Productivity',
+      'Claude 3.5 Sonnet vs GPT-4o: Key Differences in 30 Seconds',
+      'Free AI tools that replace expensive $99/mo SaaS subscriptions'
+    ]
+  },
+  {
+    id: 'ai-automation',
+    name: 'Automation Workflows',
+    description: 'Practical multi-step AI pipelines, webhook triggers, API integrations, and autonomous data processing.',
+    color: 'from-cyan-500 to-blue-600',
+    badgeBg: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30',
+    borderColor: 'border-cyan-500/40',
+    iconName: 'Cpu',
+    defaultAudience: 'Founders, builders & operations engineers',
+    suggestedTopics: [
+      'How AI Can Turn a Messy Spreadsheet Into Useful Insights',
+      'How Autonomous AI Workflows Actually Connect APIs',
+      'Building an Automated Document Summarization Pipeline in 5 Minutes',
+      'Connecting Webhooks to AI Models for Instant Data Formatting'
+    ]
+  },
+  {
+    id: 'ai-news-update',
+    name: 'AI News & Launches',
+    description: 'Breaking AI model updates, open-source releases, major product launches, and industry trends.',
+    color: 'from-emerald-500 to-teal-600',
+    badgeBg: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30',
+    borderColor: 'border-emerald-500/40',
+    iconName: 'TrendingUp',
+    defaultAudience: 'Tech enthusiasts, engineers & early adopters',
+    suggestedTopics: [
+      'New AI Models & Features You Should Know This Week',
+      'Major Open-Source Model Drop: What Changed and Why It Matters',
+      'The Shift to Agentic Workflows: What You Need to Know',
+      'Top 3 AI Breakthroughs Announced This Month'
+    ]
+  },
+  {
+    id: 'practical-tutorials',
+    name: 'Practical AI Tutorials',
+    description: 'Step-by-step how-to walkthroughs, prompt techniques, and practical AI implementations.',
+    color: 'from-indigo-500 to-violet-600',
+    badgeBg: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/30',
+    borderColor: 'border-indigo-500/40',
+    iconName: 'Layout',
+    defaultAudience: 'Learners, builders & everyday professionals',
+    suggestedTopics: [
+      'How to Write Better Prompts Using Chain-of-Thought Reasoning',
+      'Step-by-Step: Extract Structured JSON from Unstructured Text with AI',
+      'Turn Raw Voice Recordings into Structured Meeting Notes in 60s',
+      'How to Build a Local RAG System for Your Personal Documents'
+    ]
+  },
+  {
+    id: 'ai-explainers',
+    name: 'Simple AI Explainers',
+    description: 'Clear, jargon-free visual explainers demystifying AI concepts, architectures, and capabilities.',
+    color: 'from-amber-500 to-orange-600',
+    badgeBg: 'bg-amber-500/10 text-amber-400 border-amber-500/30',
+    borderColor: 'border-amber-500/40',
+    iconName: 'Zap',
+    defaultAudience: 'Curious learners & non-technical professionals',
+    suggestedTopics: [
+      'What is an AI Agent? (Explained in 30 Seconds)',
+      'Vector Databases Explained Simply with Visual Diagrams',
+      'Why Context Window Size Matters for Modern AI Models',
+      'Fine-Tuning vs RAG: When to Use Which'
     ]
   },
   {
     id: 'flash-builds',
-    name: 'FLASH.Ai Builds',
-    description: 'Case studies, live client build demonstrations, custom dashboards, and technical showcase.',
+    name: 'FLASH.Ai Architecture',
+    description: 'Behind the scenes engineering, multi-agent pipelines, automated media rendering, and technical deep dives.',
     color: 'from-cyan-400 to-emerald-400',
     badgeBg: 'bg-cyan-500/10 text-cyan-300 border-cyan-400/40',
     borderColor: 'border-cyan-400/50',
     iconName: 'Code',
-    defaultAudience: 'Potential clients looking for proven custom digital solutions',
+    defaultAudience: 'Software developers & AI system architects',
     suggestedTopics: [
-      'Inside the custom AI inventory assistant built for a multi-store retailer',
-      'FLASH.Ai Build: Real-time lead hunter & verification pipeline demo',
-      'How we built a custom booking portal in 72 hours for a luxury salon',
-      'Architecting a multi-agent social media engine with real-time approval'
-    ]
-  },
-  {
-    id: 'behind-the-scenes',
-    name: 'Behind The Scenes',
-    description: 'Transparent engineering, founder lessons, agency workflows, client wins, and day-in-the-life.',
-    color: 'from-rose-500 to-pink-600',
-    badgeBg: 'bg-rose-500/10 text-rose-400 border-rose-500/30',
-    borderColor: 'border-rose-500/40',
-    iconName: 'Video',
-    defaultAudience: 'Followers, business peers & prospective team/partners',
-    suggestedTopics: [
-      'Day in the life building FLASH.Ai automation systems for clients',
-      'What went wrong when we tested our first automated webhook engine',
-      'Our internal setup: The hardware & software powering FLASH.Ai studio',
-      'How we plan 30 days of high-value social media content in 2 hours'
+      'Inside the FLASH.Ai Real-Time 9:16 Media Muxing Engine',
+      'How We Orchestrate Multi-Agent Verification Pipelines',
+      'Benchmarking ElevenLabs Voice Latency with Cached Local Streams',
+      'Designing Zero-Drift Video Timelines with Canvas Rasterization'
     ]
   }
 ];
@@ -164,12 +132,12 @@ export const TONES = [
 ] as const;
 
 export const CTAS = [
-  'Book Strategy Call',
-  'DM "AUTOMATE"',
-  'Comment "GROWTH"',
-  'Check Link in Bio',
-  'Free AI Audit',
-  'WhatsApp Us Directly'
+  'Save for Your Next Project',
+  'Follow @flash_ai_digital',
+  'Explore Curated AI Tools',
+  'Try This AI Workflow',
+  'Which Tool Would You Use?',
+  'Check Link in Bio'
 ] as const;
 
 export const LEAD_STATUSES = [

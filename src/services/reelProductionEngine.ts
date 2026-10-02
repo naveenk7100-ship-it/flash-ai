@@ -81,25 +81,25 @@ export class ReelProductionEngine {
     preferredMode?: 'DEMO' | 'AI';
   }): ProductionReelPackage {
     const topic = params.topic.trim();
-    const pillarId = params.pillarId || 'ai-automation';
-    const targetAudience = params.targetAudience || 'Small business owners & founders';
-    const targetDuration = Math.min(60, Math.max(20, params.targetDurationSeconds || 35));
+    const pillarId = params.pillarId || 'ai-tools';
+    const targetAudience = params.targetAudience || 'Creators, developers & tech enthusiasts';
+    const targetDuration = Math.min(60, Math.max(20, params.targetDurationSeconds || 30));
 
     // 1. Select Format using smart rotation engine
     const format = params.formatId
       ? reelFormatEngine.getFormatById(params.formatId) || reelFormatEngine.selectNextFormat({ pillarId })
       : reelFormatEngine.selectNextFormat({ pillarId });
 
-    // 2. Select CTA
+    // 2. Select CTA (Default to educational/informative conclusion)
     const cta = params.cta || FLASH_AI_BRAND.ctaStyles[0].label;
 
     // 3. Craft tailored 5-block scenes based on format and topic
     const scenes = this.buildScenes(topic, format, targetDuration, cta);
     const totalDuration = scenes.reduce((acc, s) => acc + s.durationSeconds, 0);
 
-    const hook = scenes[0]?.voiceoverText || `Here is how AI is transforming ${topic}.`;
+    const hook = scenes[0]?.voiceoverText || `Here is what you need to know about ${topic}.`;
     const hookRetentionCue = scenes[0]?.visualInstruction || format.retentionCue;
-    const conceptSummary = `${format.name} breakdown showing ${topic} implemented with FLASH.Ai automated architecture.`;
+    const conceptSummary = `${format.name} breakdown exploring ${topic} with practical visual insights.`;
 
     // 4. Generate Caption
     const caption = this.generateCaption(topic, format, scenes, cta);
@@ -211,11 +211,11 @@ export class ReelProductionEngine {
         block: 'PROBLEM_CONTEXT',
         durationSeconds: dProblem,
         visualSource: 'ui_screenshot',
-        textOverlay: `The Bottleneck: 15+ Hours Wasted on Manual ${this.extractCoreSubject(topic)}`,
-        voiceoverText: `Most businesses lose hours every single week dealing with messy manual handoffs, slow response times, and unorganized inquiries.`,
-        visualInstruction: 'Red highlight box zooms into manual spreadsheet or backlog of 40 unread messages.',
+        textOverlay: `The Challenge: Hours Lost on Manual ${this.extractCoreSubject(topic)}`,
+        voiceoverText: `Keeping up with modern AI tools and manual workflows takes hours of tedious testing every single week.`,
+        visualInstruction: 'Multi-window desktop interface showing tab overload and complex manual file handling.',
         transition: 'slide_left',
-        audioInstruction: 'Subtle tension drone with quick notification buzz sound effect.'
+        audioInstruction: 'Subtle tension drone with quick UI transition sound effect.'
       },
 
       // 3. DEMO / VALUE (00:09 - ~00:25)
@@ -224,11 +224,11 @@ export class ReelProductionEngine {
         block: 'DEMO_VALUE',
         durationSeconds: dDemo,
         visualSource: format.primaryVisualSource === 'website_recording' ? 'website_recording' : 'product_demo',
-        textOverlay: `FLASH.Ai Automated Workflow: Instant Trigger → AI Processing → Confirmation`,
-        voiceoverText: `Here is how we automate it with FLASH.Ai. The moment an inquiry arrives, our AI agent validates the intent, extracts the parameters, and triggers the next step in under 2 seconds.`,
-        visualInstruction: 'Live screen recording showing automated webhook executing with neon terminal logs turning green.',
+        textOverlay: `AI Capabilities: Instant Processing & Smart Workflows`,
+        voiceoverText: `Here is how modern AI models solve this directly. With clean prompt structures and connected nodes, tasks execute in seconds.`,
+        visualInstruction: 'Live screen recording showing instant AI response with interactive canvas and structured output.',
         transition: 'zoom_in',
-        audioInstruction: 'Fast keyboard clatter SFX, upbeat tech house riser, clear energetic voiceover pacing.'
+        audioInstruction: 'Fast keyboard clatter SFX, upbeat tech riser, clear energetic voiceover pacing.'
       },
 
       // 4. RESULT / PAYOFF (00:25 - ~00:31)
@@ -237,9 +237,9 @@ export class ReelProductionEngine {
         block: 'RESULT_PAYOFF',
         durationSeconds: dResult,
         visualSource: 'image',
-        textOverlay: `The Payoff: 2-Second Response Time • 0 Missed Leads • 24/7 Autopilot`,
-        voiceoverText: `The result? Zero missed opportunities, 24/7 reliability, and your team gets 15 hours back every single week.`,
-        visualInstruction: 'High-contrast metrics graphic card with animated +38% conversion badge and calendar booked slots.',
+        textOverlay: `The Takeaway: 10x Faster Output • Zero Manual Friction`,
+        voiceoverText: `The result is cleaner workflows, structured data in seconds, and hours saved every single week.`,
+        visualInstruction: 'High-contrast summary card showing 10x speedup metrics and polished final artifact.',
         transition: 'fade',
         audioInstruction: 'Positive success chime, bright harmonic resolution.'
       },
@@ -250,11 +250,11 @@ export class ReelProductionEngine {
         block: 'CTA',
         durationSeconds: dCta,
         visualSource: 'visual_placeholder',
-        textOverlay: `👉 ${cta} for the Complete Blueprint | @flash_ai_digital`,
-        voiceoverText: `Want this exact automation built for your business? ${cta} and we will send you the complete blueprint.`,
-        visualInstruction: 'Cyber navy card with pulsing cyan CTA button and animated cursor click on @flash_ai_digital.',
+        textOverlay: `💡 ${cta} | @flash_ai_digital`,
+        voiceoverText: `These tools are moving AI directly into everyday workflows. Follow @flash_ai_digital for daily AI discoveries.`,
+        visualInstruction: 'Clean cyber card with highlighted takeaway badge and @flash_ai_digital handle.',
         transition: 'pulse',
-        audioInstruction: 'Bass drop with distinct double-click sound effect. Clean audio fade-out.'
+        audioInstruction: 'Harmonic resolution chime with clean audio fade-out.'
       }
     ];
 
@@ -264,46 +264,46 @@ export class ReelProductionEngine {
   private generateHookOverlay(topic: string, format: ReelFormatDefinition): string {
     switch (format.id) {
       case 'i-built-this-with-ai':
-        return `⚡ I Built This AI Agent in 48 Hours`;
+        return `⚡ Built With AI in Under 48 Hours`;
       case 'before-after':
-        return `⚠️ Manual Workflow vs ⚡ AI Autopilot`;
+        return `⚠️ Manual Work vs ⚡ AI in 3 Seconds`;
       case 'ai-automation-demo':
-        return `👀 Watch This AI Automate in Real-Time`;
+        return `👀 Watch This AI Workflow in Action`;
       case 'website-showcase':
-        return `🚀 Modern Website Setup for 3x Bookings`;
+        return `🚀 Useful AI Website You Need to Try`;
       case 'ai-tool-discovery':
-        return `🔥 Free AI Tool You Need to Install`;
+        return `🔥 5 AI Tools That Save Hours`;
       case 'workflow-reveal':
-        return `📂 Steal Our Exact 4-Step Agency Pipeline`;
+        return `📂 Inside This 4-Step AI Pipeline`;
       case 'three-tools-three-tips':
-        return `🛠️ 3 AI Tools That Save 20 Hours/Week`;
+        return `🛠️ 3 Free AI Tools to Try This Week`;
       case 'myth-vs-reality':
-        return `❌ Myth vs ✅ Reality: AI Automation`;
+        return `❌ AI Myth vs ✅ Real AI Capability`;
       default:
-        return `⚠️ Stop Doing ${this.extractCoreSubject(topic)} Manually`;
+        return `💡 How AI Solves ${this.extractCoreSubject(topic)}`;
     }
   }
 
   private generateHookVoiceover(topic: string, format: ReelFormatDefinition): string {
     switch (format.id) {
       case 'i-built-this-with-ai':
-        return `I built a complete automated AI workflow for ${this.extractCoreSubject(topic)} in under 48 hours. Here is how it works.`;
+        return `Here is how you can build an automated AI workflow for ${this.extractCoreSubject(topic)} in under 48 hours.`;
       case 'before-after':
-        return `Before FLASH.Ai: 4 hours of tedious manual busywork. After: 3 seconds on full autopilot.`;
+        return `Before: hours of repetitive manual data formatting. After: 3 seconds with AI.`;
       case 'ai-automation-demo':
-        return `Watch what happens in real-time when our AI agent handles this entire workflow automatically.`;
+        return `Watch what happens when you connect this AI model directly to your daily workflow.`;
       case 'website-showcase':
-        return `Here is why this modern website converts 3 times more leads than traditional static sites.`;
+        return `This useful AI website lets you build interactive tools and workflows with plain English.`;
       case 'ai-tool-discovery':
-        return `This free AI tool feels like an unfair advantage for small business owners in 2026.`;
+        return `These practical AI tools feel like an unfair productivity advantage in 2026.`;
       case 'workflow-reveal':
-        return `Steal this exact 4-step automation pipeline we use to eliminate 15 hours of manual work.`;
+        return `Here is the exact 4-step AI workflow to automate document analysis and research.`;
       case 'three-tools-three-tips':
-        return `Here are 3 practical AI tools every founder needs to start using this week.`;
+        return `Here are 3 practical AI tools you should start using to speed up your everyday work.`;
       case 'myth-vs-reality':
-        return `The biggest myth in business right now is that AI automation costs thousands. Here is the reality.`;
+        return `The biggest myth about modern AI is that you need complex infrastructure. Here is the reality.`;
       default:
-        return `If you still handle ${this.extractCoreSubject(topic)} manually in 2026, you are burning valuable hours.`;
+        return `Here is how modern AI tools are transforming ${this.extractCoreSubject(topic)} in 2026.`;
     }
   }
 
@@ -323,36 +323,33 @@ export class ReelProductionEngine {
   ): string {
     return `${scenes[0].voiceoverText} 👇
 
-Most businesses spend 15+ hours every week trapped in manual handoffs, slow response times, and repetitive admin work. 
+Here is how modern AI models and automated workflows are transforming everyday productivity:
 
-Here is how we solve it at @flash_ai_digital with autonomous AI systems:
-
-⚡ 1. Instant Trigger: Inquiries and data are ingested automatically with zero latency.
-⚡ 2. Intelligent Agent Logic: AI qualifies intent, verifies details, and prepares execution.
-⚡ 3. Direct Outcome: Automated CRM sync, instant client reply, and verified time saved.
+⚡ 1. Rapid Setup: Plug directly into existing tools without complex coding.
+⚡ 2. Intelligent Processing: AI parses unstructured documents, code, and text in seconds.
+⚡ 3. Real Productivity: Get hours back every single week.
 
 Format: ${format.name}
-Built by: FLASH.Ai (@flash_ai_digital)
+Curated by: FLASH.Ai (@flash_ai_digital)
 
-👉 ${cta} and we'll send you our step-by-step implementation blueprint!
-
-Save this Reel for later 📌`;
+📌 ${cta}
+Follow @flash_ai_digital for daily AI tools, model updates & practical tutorials!`;
   }
 
   private generateHashtags(pillarId: string, _formatId?: string): { niche: string[]; broad: string[]; viral: string[] } {
     const nicheMap: Record<string, string[]> = {
-      'ai-automation': ['#AIAutomation', '#WorkflowAutomation', '#AgencyAutomation', '#FLASHai'],
-      'whatsapp-automation': ['#WhatsAppAutomation', '#ChatbotMarketing', '#InboundLeads', '#FLASHai'],
-      'lead-generation': ['#LeadGeneration', '#B2BAutomation', '#InboundMarketing', '#SalesPipeline'],
-      'website-solutions': ['#WebDesign', '#HighConvertingWebsite', '#CRO', '#DigitalAgency'],
-      'ai-tools': ['#AITools', '#ProductivityHacks', '#ArtificialIntelligence', '#TechTools'],
-      'business-growth': ['#BusinessGrowth', '#ScalingUp', '#Entrepreneurship', '#StartupOps']
+      'ai-tools': ['#AITools', '#ProductivityTools', '#UsefulWebsites', '#FLASHai'],
+      'ai-automation': ['#AIAutomation', '#WorkflowAutomation', '#AgenticAI', '#FLASHai'],
+      'ai-news-update': ['#AINews', '#ModelUpdates', '#TechTrends', '#FLASHai'],
+      'practical-tutorials': ['#AITutorial', '#PromptEngineering', '#HowToAI', '#FLASHai'],
+      'ai-explainers': ['#AIExplained', '#ArtificialIntelligence', '#TechTips', '#FLASHai'],
+      'flash-builds': ['#TechStack', '#SoftwareEngineering', '#DeveloperTools', '#FLASHai']
     };
 
     return {
-      niche: nicheMap[pillarId] || ['#AIAutomation', '#BusinessSystems', '#FLASHai'],
-      broad: ['#ArtificialIntelligence', '#SmallBusinessTips', '#Automation'],
-      viral: ['#TechReels', '#ProductivityTips', '#FutureOfWork']
+      niche: nicheMap[pillarId] || ['#AITools', '#AIAutomation', '#FLASHai'],
+      broad: ['#ArtificialIntelligence', '#MachineLearning', '#ProductivityHacks'],
+      viral: ['#TechReels', '#FutureOfWork', '#AIEveryday']
     };
   }
 }

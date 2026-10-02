@@ -192,15 +192,15 @@ export class ReelProductionPipeline {
    */
   public createDemoReelProject(preferredTemplateId?: ReelTemplateId, customTopic?: string): ReelProductionProject {
     const pkg = reelProductionEngine.generateReelPackage({
-      topic: customTopic || 'How AI Agents Process 50 Inbound Dental Appointments Daily',
-      pillarId: 'ai-automation',
-      targetDurationSeconds: 32,
-      cta: 'DM "AUTOMATE"'
+      topic: customTopic || '5 AI Tools That Save Hours Every Week',
+      pillarId: 'ai-tools',
+      targetDurationSeconds: 30,
+      cta: 'Save for your next project'
     });
 
     return this.createProjectFromPackage({
       reelPackage: pkg,
-      templateId: preferredTemplateId || 'build-showcase'
+      templateId: preferredTemplateId || 'tool-showcase'
     });
   }
 
