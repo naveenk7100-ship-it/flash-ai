@@ -1,0 +1,16 @@
+/node_modules/
+/services/
+/media/renders/
+/media/assets/
+/media/audio/
+/scratch/
+/.git/
+/.github/
+*.mp4
+*.mp3
+*.wav
+*.m4a
+.env
+.env.*
+!.env.example
+!.env.production.example

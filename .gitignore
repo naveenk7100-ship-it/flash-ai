@@ -46,3 +46,5 @@ DEBUG_*.png
 *.sln
 *.sw?
 Thumbs.db
+
+.vercel
