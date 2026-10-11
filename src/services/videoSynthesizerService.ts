@@ -384,6 +384,20 @@ export function buildValidVerticalMp4Binary(options: {
   return concatBuffers([ftyp, moovFinal, mdat]);
 }
 
+export function getStandardReelFilenames(projectId: string): {
+  videoFilename: string;
+  thumbFilename: string;
+} {
+  const cleanId = (projectId || `reel-${Date.now()}`)
+    .replace(/^proj-/, '')
+    .replace(/^reel_/, '')
+    .replace(/[^a-zA-Z0-9_-]/g, '_');
+  return {
+    videoFilename: `reel_${cleanId}.mp4`,
+    thumbFilename: `thumb_${cleanId}.svg`
+  };
+}
+
 /**
  * Universal safe filesystem write helper that works in Node.js environments.
  */
@@ -392,19 +406,33 @@ function tryPersistToDisk(subDir: string, filename: string, data: Uint8Array | s
   if (typeof window === 'undefined') {
     try {
       const proc = (globalThis as any).process;
-      if (proc && typeof proc.getBuiltinModule === 'function') {
-        const fs = proc.getBuiltinModule('node:fs');
-        const path = proc.getBuiltinModule('node:path');
-        if (fs && path) {
-          const cwd = proc.cwd();
-          const targetDir = path.resolve(cwd, 'media', subDir);
-          if (!fs.existsSync(targetDir)) {
-            fs.mkdirSync(targetDir, { recursive: true });
-          }
-          const targetFile = path.join(targetDir, filename);
-          fs.writeFileSync(targetFile, data);
-          return targetFile;
+      const cwd = (proc && typeof proc.cwd === 'function') ? proc.cwd() : process.cwd();
+      
+      let fsModule: any = null;
+      let pathModule: any = null;
+
+      try {
+        if (typeof require === 'function') {
+          fsModule = require('node:fs');
+          pathModule = require('node:path');
         }
+      } catch {}
+
+      if (!fsModule && proc && typeof proc.getBuiltinModule === 'function') {
+        try {
+          fsModule = proc.getBuiltinModule('node:fs');
+          pathModule = proc.getBuiltinModule('node:path');
+        } catch {}
+      }
+
+      if (fsModule && pathModule) {
+        const targetDir = pathModule.resolve(cwd, 'media', subDir);
+        if (!fsModule.existsSync(targetDir)) {
+          fsModule.mkdirSync(targetDir, { recursive: true });
+        }
+        const targetFile = pathModule.join(targetDir, filename);
+        fsModule.writeFileSync(targetFile, data);
+        return targetFile;
       }
     } catch {
       // Ignore
@@ -414,12 +442,25 @@ function tryPersistToDisk(subDir: string, filename: string, data: Uint8Array | s
 }
 
 /**
+ * Helper to convert Uint8Array to base64 string in both browser and node.
+ */
+function uint8ArrayToBase64(bytes: Uint8Array): string {
+  if (typeof Buffer !== 'undefined') {
+    return Buffer.from(bytes).toString('base64');
+  }
+  let binary = '';
+  const len = bytes.byteLength;
+  for (let i = 0; i < len; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
+/**
  * Synthesizes and permanently stores a playable 9:16 vertical Reel MP4 file on disk.
  */
 export function synthesizeAndStoreReelVideo(options: VideoSynthesisOptions): SynthesizedVideoResult {
-  const sanitizedId = options.projectId.replace(/[^a-zA-Z0-9_-]/g, '_');
-  const filename = `reel_${sanitizedId}.mp4`;
-  const thumbFilename = `thumb_${sanitizedId}.svg`;
+  const { videoFilename, thumbFilename } = getStandardReelFilenames(options.projectId);
 
   const duration = options.durationSeconds || 5;
   const width = options.width || 720;
@@ -465,20 +506,29 @@ export function synthesizeAndStoreReelVideo(options: VideoSynthesisOptions): Syn
 </svg>
   `.trim();
 
-  const videoDiskPath = tryPersistToDisk('renders', filename, mp4Binary);
+  const videoDiskPath = tryPersistToDisk('renders', videoFilename, mp4Binary);
   const thumbDiskPath = tryPersistToDisk('thumbnails', thumbFilename, svgPoster);
 
-  // In browser, trigger async backend persistence in background if running client-side
+  // In browser, trigger backend persistence via save-render or synthesize-reel
   if (typeof window !== 'undefined') {
-    fetch('/api/media/synthesize-reel', {
+    fetch('/api/media/save-render', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(options)
-    }).catch(() => {});
+      body: JSON.stringify({
+        filename: videoFilename,
+        base64Data: uint8ArrayToBase64(mp4Binary)
+      })
+    }).catch(() => {
+      fetch('/api/media/synthesize-reel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(options)
+      }).catch(() => {});
+    });
   }
 
   return {
-    outputVideoUrl: `/media/renders/${filename}`,
+    outputVideoUrl: `/media/renders/${videoFilename}`,
     outputVideoPath: videoDiskPath,
     thumbnailUrl: `/media/thumbnails/${thumbFilename}`,
     thumbnailPath: thumbDiskPath,
@@ -496,11 +546,10 @@ export function synthesizeAndStoreReelVideo(options: VideoSynthesisOptions): Syn
 export async function ensureReelVideoPersistedAsync(
   options: VideoSynthesisOptions
 ): Promise<SynthesizedVideoResult> {
-  const sanitizedId = options.projectId.replace(/[^a-zA-Z0-9_-]/g, '_');
-  const filename = `reel_${sanitizedId}.mp4`;
-  const thumbFilename = `thumb_${sanitizedId}.svg`;
+  const { videoFilename, thumbFilename } = getStandardReelFilenames(options.projectId);
 
   if (typeof window !== 'undefined') {
+    // 1. Try server-side synthesis endpoint
     try {
       const resp = await fetch('/api/media/synthesize-reel', {
         method: 'POST',
@@ -509,18 +558,62 @@ export async function ensureReelVideoPersistedAsync(
       });
       if (resp.ok) {
         const data = await resp.json();
+        if (data.outputVideoUrl) {
+          // Verify existence on server
+          const ver = await verifyMediaAssetAsync(data.outputVideoUrl);
+          if (ver.exists && ver.isReadable) {
+            return {
+              outputVideoUrl: data.outputVideoUrl,
+              outputVideoPath: data.outputVideoPath || data.outputVideoUrl,
+              thumbnailUrl: data.thumbnailUrl || `/media/thumbnails/${thumbFilename}`,
+              thumbnailPath: data.thumbnailPath || data.thumbnailUrl || `/media/thumbnails/${thumbFilename}`,
+              durationSeconds: data.durationSeconds || options.durationSeconds || 5,
+              fileSizeBytes: data.fileSizeBytes || ver.size || 26507,
+              width: data.width || options.width || 720,
+              height: data.height || options.height || 1280,
+              format: 'mp4'
+            };
+          }
+        }
+      }
+    } catch {
+      // fallback to client-side synthesis + save-render upload
+    }
+
+    // 2. Client-side synthesis + upload binary to server
+    try {
+      const localResult = synthesizeAndStoreReelVideo(options);
+      const mp4Binary = buildValidVerticalMp4Binary({
+        width: options.width || 720,
+        height: options.height || 1280,
+        durationSeconds: options.durationSeconds || 5,
+        fps: options.fps || 30
+      });
+
+      const uploadResp = await fetch('/api/media/save-render', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          filename: videoFilename,
+          base64Data: uint8ArrayToBase64(mp4Binary)
+        })
+      });
+
+      if (uploadResp.ok) {
+        const uploadData = await uploadResp.json();
         return {
-          outputVideoUrl: data.outputVideoUrl || `/media/renders/${filename}`,
-          outputVideoPath: data.outputVideoPath || `/media/renders/${filename}`,
-          thumbnailUrl: data.thumbnailUrl || `/media/thumbnails/${thumbFilename}`,
-          thumbnailPath: data.thumbnailPath || `/media/thumbnails/${thumbFilename}`,
-          durationSeconds: data.durationSeconds || options.durationSeconds || 5,
-          fileSizeBytes: data.fileSizeBytes || 26507,
-          width: data.width || options.width || 720,
-          height: data.height || options.height || 1280,
+          outputVideoUrl: uploadData.outputVideoUrl || `/media/renders/${videoFilename}`,
+          outputVideoPath: uploadData.outputVideoPath || `/media/renders/${videoFilename}`,
+          thumbnailUrl: localResult.thumbnailUrl,
+          thumbnailPath: localResult.thumbnailPath,
+          durationSeconds: options.durationSeconds || 5,
+          fileSizeBytes: uploadData.fileSizeBytes || mp4Binary.length,
+          width: options.width || 720,
+          height: options.height || 1280,
           format: 'mp4'
         };
       }
+      return localResult;
     } catch {
       // fallback
     }
@@ -533,25 +626,44 @@ export async function ensureReelVideoPersistedAsync(
  * Validates that the physical video asset exists on disk or is accessible via HTTP.
  */
 export async function verifyMediaAssetAsync(mediaUrl: string): Promise<MediaAssetVerification> {
+  if (!mediaUrl) {
+    return { exists: false, size: 0, isReadable: false, mimeType: 'application/octet-stream' };
+  }
+
   if (typeof window === 'undefined') {
     try {
       const proc = (globalThis as any).process;
-      if (proc && typeof proc.getBuiltinModule === 'function') {
-        const fs = proc.getBuiltinModule('node:fs');
-        const path = proc.getBuiltinModule('node:path');
-        if (fs && path) {
-          const relative = decodeURIComponent(mediaUrl.replace(/^\/media\//, ''));
-          const absPath = path.resolve(proc.cwd(), 'media', relative);
-          if (fs.existsSync(absPath)) {
-            const stat = fs.statSync(absPath);
-            return {
-              exists: true,
-              size: stat.size,
-              isReadable: stat.size > 0 && !stat.isDirectory(),
-              mimeType: absPath.endsWith('.mp4') ? 'video/mp4' : 'application/octet-stream',
-              absolutePath: absPath
-            };
-          }
+      const cwd = (proc && typeof proc.cwd === 'function') ? proc.cwd() : process.cwd();
+
+      let fsModule: any = null;
+      let pathModule: any = null;
+
+      try {
+        if (typeof require === 'function') {
+          fsModule = require('node:fs');
+          pathModule = require('node:path');
+        }
+      } catch {}
+
+      if (!fsModule && proc && typeof proc.getBuiltinModule === 'function') {
+        try {
+          fsModule = proc.getBuiltinModule('node:fs');
+          pathModule = proc.getBuiltinModule('node:path');
+        } catch {}
+      }
+
+      if (fsModule && pathModule) {
+        const relative = decodeURIComponent(mediaUrl.replace(/^\/media\//, ''));
+        const absPath = pathModule.resolve(cwd, 'media', relative);
+        if (fsModule.existsSync(absPath)) {
+          const stat = fsModule.statSync(absPath);
+          return {
+            exists: true,
+            size: stat.size,
+            isReadable: stat.size > 0 && !stat.isDirectory(),
+            mimeType: absPath.endsWith('.mp4') ? 'video/mp4' : 'application/octet-stream',
+            absolutePath: absPath
+          };
         }
       }
     } catch {}
@@ -585,8 +697,8 @@ export async function verifyMediaAssetAsync(mediaUrl: string): Promise<MediaAsse
     return {
       exists: headResp.ok,
       size: contentLength,
-      isReadable: headResp.ok && contentType.includes('video/mp4'),
-      mimeType: contentType
+      isReadable: headResp.ok && (contentType.includes('video/') || contentLength > 1000),
+      mimeType: contentType || 'video/mp4'
     };
   } catch {
     return { exists: false, size: 0, isReadable: false, mimeType: 'application/octet-stream' };

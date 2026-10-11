@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  # 1. FLASH.Ai Unified Node.js Backend & Static SPA Server
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: flash-ai-backend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - MONEYPRINTER_URL=http://moneyprinter:8080
+      - META_PUBLISHING_MODE=LIVE
+      - META_INSTAGRAM_ACCOUNT_ID=${META_INSTAGRAM_ACCOUNT_ID:-17841436234295944}
+      - META_ACCESS_TOKEN=${META_ACCESS_TOKEN}
+      - META_API_VERSION=${META_API_VERSION:-v21.0}
+      - ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - DATA_ROOT=/app/data
+      - MEDIA_ROOT=/app/media
+    volumes:
+      - flash_ai_data:/app/data
+      - flash_ai_media:/app/media
+    depends_on:
+      - moneyprinter
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  # 2. MoneyPrinterTurbo Standalone Python Video Rendering Worker
+  moneyprinter:
+    build:
+      context: ./services/moneyprinterturbo
+      dockerfile: Dockerfile.production
+    container_name: flash-ai-mpt
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+    volumes:
+      - flash_ai_mpt_storage:/MoneyPrinterTurbo/storage
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+volumes:
+  flash_ai_data:
+    driver: local
+  flash_ai_media:
+    driver: local
+  flash_ai_mpt_storage:
+    driver: local

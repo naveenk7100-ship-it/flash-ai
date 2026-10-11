@@ -85,12 +85,33 @@ export class VisualIntentEngine {
     }
 
     // Split by clean sentence boundaries or bracketed cues like [00:00 - 00:03]
-    const rawLines = cleaned
+    let rawLines = cleaned
       .split(/(?:\[\d{2}:\d{2}\s*-\s*\d{2}:\d{2}\]|\n\n+|\.\s+(?=[A-Z0-9]))/)
       .map((l) => l.replace(/^\[.*?\]\s*/, '').replace(/^(HOOK|PROBLEM|SOLUTION|VALUE|DEMO|RESULT|CTA|CONCLUSION):\s*/i, '').trim())
       .filter((l) => l.length > 5);
 
-    const scenesCount = Math.min(6, Math.max(3, rawLines.length));
+    // If only 1 or 2 sentences are present, extract natural action sub-clauses so that each major spoken idea
+    // receives its own dedicated visual scene (target 3-5 scenes for optimal short-form pacing)
+    if (rawLines.length < 3) {
+      const subClauses: string[] = [];
+      for (const line of rawLines) {
+        if (line.length > 30 && /[,;]|\band\s+(?=preview|iterate|automate|turn|build|show|deploy|run)/i.test(line)) {
+          const parts = line.split(/(?:,\s*(?:and\s+)?|;\s*|\band\s+(?=preview|iterate|automate|turn|build|show|deploy|run))/i)
+            .map(p => p.trim())
+            .filter(p => p.length > 4);
+          if (parts.length >= 2) {
+            subClauses.push(...parts);
+            continue;
+          }
+        }
+        subClauses.push(line);
+      }
+      if (subClauses.length >= 2) {
+        rawLines = subClauses;
+      }
+    }
+
+    const scenesCount = Math.min(6, Math.max(1, rawLines.length));
     const lines = rawLines.slice(0, scenesCount);
 
     return lines.map((text, idx) => {
@@ -183,44 +204,105 @@ export class VisualIntentEngine {
       cameraMovement = 'zoom_in';
       transition = 'slide_left';
       audioCue = 'whoosh_impact';
-      onScreenHeadline = 'AI IS GETTING EASIER';
-      onScreenSubtitle = 'Everyday Productivity • Zero Setup';
-      highlightKeywords.push('EASIER', 'EVERYDAY WORK');
+
+      if (/claude|artifact/i.test(combinedText)) {
+        onScreenHeadline = 'CLAUDE ARTIFACTS';
+        onScreenSubtitle = 'Prompt → Interactive Workspace';
+        highlightKeywords.push('CLAUDE', 'ARTIFACTS', 'WORKSPACE');
+      } else if (/perplexity|search/i.test(combinedText)) {
+        onScreenHeadline = 'PERPLEXITY PRO';
+        onScreenSubtitle = 'Real-Time Academic Search & Citations';
+        highlightKeywords.push('SEARCH', 'CITATIONS', 'REAL-TIME');
+      } else if (/cursor|code/i.test(combinedText)) {
+        onScreenHeadline = 'CURSOR AI EDITOR';
+        onScreenSubtitle = 'Multi-File Indexing & Instant Diffs';
+        highlightKeywords.push('CURSOR', 'MULTI-FILE', 'CODE');
+      } else if (/v0|ui|component/i.test(combinedText)) {
+        onScreenHeadline = 'V0 GENERATIVE UI';
+        onScreenSubtitle = 'Prompt to Production React Code';
+        highlightKeywords.push('V0', 'REACT', 'COMPONENTS');
+      } else if (/make|webhook|automation/i.test(combinedText)) {
+        onScreenHeadline = 'AI AUTOMATION PIPELINE';
+        onScreenSubtitle = 'Visual Webhook & Autonomous Execution';
+        highlightKeywords.push('AUTOMATION', 'WEBHOOK', 'PIPELINE');
+      } else {
+        const topWords = topic.split(/\s+/).slice(0, 4).join(' ').toUpperCase();
+        onScreenHeadline = topWords.length > 3 ? topWords : 'AI WORKFLOW ENGINE';
+        onScreenSubtitle = 'Everyday Productivity • Zero Setup';
+        highlightKeywords.push('AI WORKFLOW', 'PRODUCTIVITY');
+      }
       purpose = 'Hook & Attention';
-      visualConcept = 'Modern AI workspace coming alive with live command interface and status pills.';
-    } else if (scene.sceneNumber === 2 || /prompt|interface|canvas|drag-and-drop|instead of/i.test(narration)) {
-      visualAssetType = 'BEFORE_AFTER_TRANSFORMATION';
+      visualConcept = `${entities[0] || 'AI Workspace'} coming alive with live command interface and status pills.`;
+    } else if (scene.sceneNumber === 2) {
+      visualAssetType = 'REAL_UI_MOCKUP';
       motion = 'split_screen_slide';
       cameraMovement = 'pan_right';
       transition = 'masked_reveal';
       audioCue = 'ui_click';
-      onScreenHeadline = 'LESS PROMPTING. MORE DOING.';
-      onScreenSubtitle = 'Natural Language • Drag & Drop Context • Visual Canvas';
-      highlightKeywords.push('NATURAL LANGUAGE', 'DRAG-AND-DROP', 'VISUAL CANVAS');
-      purpose = 'Paradigm Shift / Transformation';
-      visualConcept = 'Split-screen animation: Left shows complex prompt engineering transforming into Right visual drag-and-drop canvas.';
-    } else if (scene.sceneNumber === 3 || /summarize|spreadsheet|code|assistant/i.test(narration)) {
+
+      if (/claude|artifact|window|side-by-side/i.test(combinedText)) {
+        onScreenHeadline = 'SIDE-BY-SIDE INTERFACE';
+        onScreenSubtitle = 'Chat on Left • Live Artifact on Right';
+        highlightKeywords.push('SIDE-BY-SIDE', 'LIVE ARTIFACT');
+      } else if (/search|citation/i.test(combinedText)) {
+        onScreenHeadline = 'LIVE CITATIONS & SOURCES';
+        onScreenSubtitle = 'Verified Links & Source Breakdown';
+        highlightKeywords.push('CITATIONS', 'VERIFIED SOURCES');
+      } else if (/code|edit/i.test(combinedText)) {
+        onScreenHeadline = 'MULTI-FILE CODE GENERATION';
+        onScreenSubtitle = 'Clean Syntax & Scaffolding';
+        highlightKeywords.push('MULTI-FILE', 'CLEAN SYNTAX');
+      } else {
+        onScreenHeadline = 'REAL-TIME EXECUTION';
+        onScreenSubtitle = 'Direct Workflow Integration';
+        highlightKeywords.push('REAL-TIME', 'EXECUTION');
+      }
+      purpose = 'Interface & Context Split';
+      visualConcept = 'Split-screen workspace with dedicated interactive panel and live code preview.';
+    } else if (scene.sceneNumber === 3) {
       visualAssetType = 'PROCESS_ANIMATION';
       motion = 'card_stack_slide';
       cameraMovement = 'parallax_tilt';
       transition = 'beat_cut';
       audioCue = 'card_slide_hit';
-      onScreenHeadline = 'DOCUMENTS • SPREADSHEETS • CODE';
-      onScreenSubtitle = 'Instant Summary • Auto-Structuring • Clean Syntax';
-      highlightKeywords.push('SUMMARIZE', 'SPREADSHEET', 'CLEAN CODE');
-      purpose = 'Real-World Triple Demonstration';
-      visualConcept = 'Triple animated workflow: Document summarization, messy spreadsheet auto-organization, and natural language code generation.';
+
+      if (/claude|artifact|react|app|test/i.test(combinedText)) {
+        onScreenHeadline = 'LIVE INTERACTIVE APP';
+        onScreenSubtitle = 'React Components • Task Tracker • Filters';
+        highlightKeywords.push('INTERACTIVE APP', 'REACT', 'FILTERS');
+      } else if (/summar|extract/i.test(combinedText)) {
+        onScreenHeadline = 'STRUCTURED EXTRACTION';
+        onScreenSubtitle = 'Instant Table & Summary Output';
+        highlightKeywords.push('STRUCTURED', 'SUMMARY');
+      } else if (/tool|app/i.test(combinedText)) {
+        onScreenHeadline = 'PRACTICAL CAPABILITIES';
+        onScreenSubtitle = 'Feature Spotlight & Use-Cases';
+        highlightKeywords.push('CAPABILITIES', 'SPOTLIGHT');
+      } else {
+        onScreenHeadline = 'LIVE DEMONSTRATION';
+        onScreenSubtitle = 'Structured Output & Instant Testing';
+        highlightKeywords.push('LIVE DEMO', 'OUTPUT');
+      }
+      purpose = 'Live Feature Demonstration';
+      visualConcept = 'Interactive mini-application interface rendering with animated buttons, filter tabs, and real task cards.';
     } else {
       visualAssetType = 'CINEMATIC_ABSTRACT_VISUAL';
       motion = 'camera_pull_back';
       cameraMovement = 'pull_back';
       transition = 'smooth_fade';
       audioCue = 'ambient_outro';
-      onScreenHeadline = 'LESS FRICTION. MORE PRACTICAL AI.';
-      onScreenSubtitle = 'Directly Inside Everyday Workflows';
-      highlightKeywords.push('PRACTICAL AI', 'ZERO FRICTION');
+
+      if (/claude|artifact|rapid|prototype/i.test(combinedText)) {
+        onScreenHeadline = 'SEAMLESS PROTOTYPING';
+        onScreenSubtitle = 'Prompt → Artifact → Live Interaction';
+        highlightKeywords.push('PROTOTYPING', 'LIVE INTERACTION');
+      } else {
+        onScreenHeadline = 'HIGH EFFICIENCY WORKFLOW';
+        onScreenSubtitle = 'Zero Friction • Daily AI Productivity';
+        highlightKeywords.push('HIGH EFFICIENCY', 'ZERO FRICTION');
+      }
       purpose = 'Natural Takeaway & Outro';
-      visualConcept = 'Unified AI environment connecting document, data, and code modules into a single zero-friction workflow.';
+      visualConcept = 'Unified AI environment connecting prompt to live interactive artifact with zero context switching.';
     }
 
     const visualDescription = `${visualAssetType} • Scene ${scene.sceneNumber}: ${visualConcept}`;

@@ -6,6 +6,7 @@
  * All requests are executed server-side.
  * Access tokens and App Secrets NEVER reach the client.
  */
+import 'dotenv/config';
 
 export interface MetaConnectionStatus {
   isConnected: boolean;
@@ -32,6 +33,7 @@ export interface CreateContainerParams {
   caption: string;
   coverUrl?: string;
   shareToFeed?: boolean;
+  existingContainerId?: string;
 }
 
 export interface PublishResult {
@@ -347,7 +349,7 @@ export class MetaInstagramService {
       throw new Error('Meta credentials not configured.');
     }
 
-    const url = `${this.graphBaseUrl}/${creationId}?fields=status_code,status,error_message,error_subcode&access_token=${encodeURIComponent(
+    const url = `${this.graphBaseUrl}/${creationId}?fields=status_code,status&access_token=${encodeURIComponent(
       this.accessToken
     )}`;
 
@@ -367,11 +369,11 @@ export class MetaInstagramService {
   }
 
   /**
-   * Helper: Polls container status until FINISHED, ERROR, or max attempts reached.
+   * Helper: Polls container status until FINISHED, ERROR, or max attempts reached (default 40 attempts * 3s = 120 seconds).
    */
   public async pollContainerUntilReady(
     creationId: string,
-    maxAttempts: number = 10,
+    maxAttempts: number = 40,
     delayMs: number = 3000
   ): Promise<void> {
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -432,19 +434,19 @@ export class MetaInstagramService {
 
   /**
    * Full 3-Step Official Publishing Pipeline.
-   * Container Creation -> Status Polling -> Publish -> Save ID & Permalink
+   * Container Creation (or Reuse) -> Status Polling (120s) -> Publish -> Save ID & Permalink
    */
   public async publishFullPipeline(params: CreateContainerParams): Promise<PublishResult> {
     if (!this.isConfigured()) {
       throw new Error('Meta credentials not configured in server environment.');
     }
 
-    // 1. Create container
-    const containerId = await this.createMediaContainer(params);
+    // 1. Create container or reuse existing valid container
+    const containerId = params.existingContainerId || (await this.createMediaContainer(params));
 
-    // 2. Poll until FINISHED (videos/Reels need transcoding)
+    // 2. Poll until FINISHED (videos/Reels need transcoding - 40 attempts * 3s = 120s)
     if (params.mediaType === 'REELS') {
-      await this.pollContainerUntilReady(containerId, 10, 3000);
+      await this.pollContainerUntilReady(containerId, 40, 3000);
     }
 
     // 3. Publish

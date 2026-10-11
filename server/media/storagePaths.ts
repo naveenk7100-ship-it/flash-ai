@@ -1,7 +1,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-export const MEDIA_ROOT = path.resolve(process.cwd(), 'media');
+export const MEDIA_ROOT = process.env.MEDIA_ROOT
+  ? path.resolve(process.env.MEDIA_ROOT)
+  : path.resolve(process.cwd(), 'media');
 
 export const MEDIA_DIRS = {
   root: MEDIA_ROOT,

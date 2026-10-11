@@ -110,6 +110,10 @@ export class EnvConfig {
     return process.env.STORAGE_ROOT?.trim() || './server/data';
   }
 
+  public static get moneyPrinterUrl(): string {
+    return process.env.MONEYPRINTER_URL?.trim() || 'http://127.0.0.1:8080';
+  }
+
   /**
    * Generates a sanitized audit report of configured variables without revealing secrets.
    */

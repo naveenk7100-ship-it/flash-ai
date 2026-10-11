@@ -59,7 +59,11 @@ export class PublicMediaValidator {
   /**
    * Transforms a relative media path into a fully qualified public URL.
    */
-  public static resolvePublicMediaUrl(relativePath: string): string {
+  public static resolvePublicMediaUrl(relativePath?: string | null): string {
+    if (!relativePath) return '';
+    if (relativePath.startsWith('http://') || relativePath.startsWith('https://')) {
+      return relativePath;
+    }
     const cleanPath = relativePath.startsWith('/') ? relativePath : `/${relativePath}`;
     const baseUrl = EnvConfig.publicBaseUrl;
 

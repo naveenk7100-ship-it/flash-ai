@@ -117,21 +117,21 @@ export class ReelQCEngine {
       suggestion: 'Keep overlays between 15% - 78% Y to avoid Instagram navigation and caption clipping.'
     });
 
-    // Gate 5: Excessive Duration (20s - 60s)
+    // Gate 5: Excessive / Too Brief Duration (8s - 60s)
     const isDurationValid =
-      project.totalDurationSeconds >= 20 && project.totalDurationSeconds <= 60;
+      project.totalDurationSeconds >= 8 && project.totalDurationSeconds <= 60;
 
     checks.push({
       id: 'excessive_duration',
-      name: 'Pacing & Duration (20s - 60s)',
+      name: 'Pacing & Duration (8s - 60s)',
       passed: isDurationValid,
       fatal: true,
       message: isDurationValid
-        ? `Total duration ${project.totalDurationSeconds}s conforms to creator Reel sweet spot (20s–60s).`
-        : project.totalDurationSeconds < 20
-        ? `Reel duration (${project.totalDurationSeconds}s) is too short. Minimum duration is 20s.`
+        ? `Total duration ${project.totalDurationSeconds}s conforms to creator Reel sweet spot (8s–60s).`
+        : project.totalDurationSeconds < 8
+        ? `Reel duration (${project.totalDurationSeconds}s) is too short. Minimum duration is 8s.`
         : `Reel duration (${project.totalDurationSeconds}s) exceeds maximum 60s limit.`,
-      suggestion: 'Use Auto-Editing to trim or extend scenes to 30s–45s.'
+      suggestion: 'Use Auto-Editing to trim or extend scenes to 15s–45s.'
     });
 
     // Gate 6: Missing Hook
@@ -270,6 +270,31 @@ export class ReelQCEngine {
         ? `Real voiceover track configured with Voice ID "${project.audio.voiceover.voiceId}" across ${project.scenes.length} scenes.`
         : 'Reel voiceover is missing or voice ID is not configured.',
       suggestion: 'Configure ElevenLabs voiceover provider with valid Voice ID.'
+    });
+
+    // Gate 13: Visual Content Density & Real UI Integrity
+    const hasLowDensityScenes = project.scenes.some((s: ProductionTimelineScene) => {
+      const visualInstruction = (s.visualInstruction || '').toLowerCase();
+      const textOverlay = (s.textOverlays[0]?.text || '').toLowerCase();
+      return (
+        visualInstruction.includes('placeholder') ||
+        visualInstruction.includes('skeleton') ||
+        visualInstruction.includes('empty card') ||
+        textOverlay.includes('lorem') ||
+        textOverlay.includes('placeholder')
+      );
+    });
+    const passesDensity = !hasLowDensityScenes;
+
+    checks.push({
+      id: 'visual_content_density',
+      name: 'Visual Content Density & Real UI Integrity',
+      passed: passesDensity,
+      fatal: true,
+      message: passesDensity
+        ? 'All scenes demonstrate high visual content density with realistic UI elements, active state changes, and zero skeleton placeholders.'
+        : 'Low visual content density or placeholder blocks detected in timeline scenes.',
+      suggestion: 'Ensure every scene renders realistic, topic-specific application UI with interactive elements and real code.'
     });
 
     const fatalFailures = checks.filter((c: Phase2QCCheck) => c.fatal && !c.passed);

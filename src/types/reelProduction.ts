@@ -15,6 +15,13 @@
 import type { ReelFormatId, ReelStructureBlock } from '../services/reelFormatEngine.ts';
 
 export type ReelTemplateId =
+  // 5 Cohesive Distinct Presentation Styles
+  | 'cinematic-storytelling'
+  | 'clean-editorial'
+  | 'product-workflow-demo'
+  | 'developer-studio'
+  | 'trend-breakdown'
+  // Existing template formats
   | 'product-demo'
   | 'tool-showcase'
   | 'news-update'
@@ -73,6 +80,7 @@ export interface ProductionQualityScores {
 export interface TemplateSelectionInfo {
   templateId: ReelTemplateId;
   templateName: string;
+  formatName?: string;
   category: string;
   confidence: number; // 0.0 - 1.0
   reason: string;

@@ -33,7 +33,9 @@ import { reelTemplateRegistry } from '../src/services/reelTemplateRegistry.ts';
 import { topicTemplateSelector } from '../src/services/topicTemplateSelector.ts';
 import { fastReelEngine } from './media/fastReelEngine.ts';
 import { mediaSelfHealingService } from './media/mediaSelfHealing.ts';
-import { buildMuxedVerticalMp4 } from './media/audioMuxer.ts';
+import { dailyProductionScheduler } from './automation/dailyProductionScheduler.ts';
+import { trendDiscoveryEngine } from './trends/trendDiscoveryEngine.ts';
+import { moneyPrinterTurboService } from './services/moneyPrinterTurboService.ts';
 
 // Server start time for uptime tracking
 const SERVER_START_TIME = Date.now();
@@ -54,9 +56,12 @@ function isRateLimited(ip: string, limit: number = 100, windowMs: number = 60000
 }
 
 export function createAiApiHandler() {
-  // Eagerly initialize persistent scheduler in background
+  // Eagerly initialize persistent scheduler and daily production loop in background
   if (!schedulerInitPromise) {
-    schedulerInitPromise = persistentScheduler.initialize().catch((err) => {
+    schedulerInitPromise = (async () => {
+      await persistentScheduler.initialize();
+      dailyProductionScheduler.startSchedulerLoop();
+    })().catch((err) => {
       Logger.error('Failed to initialize persistent scheduler on boot', { component: 'Scheduler' }, err);
     });
   }
@@ -106,54 +111,19 @@ export function createAiApiHandler() {
       const relativePath = decodeURIComponent(url.replace(/^\/media\//, ''));
       const safePath = path.normalize(path.join(MEDIA_ROOT, relativePath));
 
+      // Path traversal security check
       if (!safePath.toLowerCase().startsWith(MEDIA_ROOT.toLowerCase())) {
         res.statusCode = 403;
-        res.end('Access denied');
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify({ error: 'Access denied' }));
         return;
       }
 
-      // Self-healing: If an MP4 render or SVG thumbnail is requested but missing from disk, synthesize immediately to safePath!
-      if (!fs.existsSync(safePath) || fs.statSync(safePath).isDirectory()) {
-        const normalizedRel = relativePath.replace(/\\/g, '/');
-        const dir = path.dirname(safePath);
-        if (!fs.existsSync(dir)) {
-          fs.mkdirSync(dir, { recursive: true });
-        }
-
-        if (normalizedRel.startsWith('renders/') && normalizedRel.endsWith('.mp4')) {
-          const rawId = path.basename(normalizedRel, '.mp4').replace(/^reel_/, '');
-          serverMediaService.synthesizeAndPersistReelFile({
-            projectId: rawId,
-            title: `AI Reel ${rawId}`,
-            topic: 'AI Automation & Business Workflows',
-            formatName: 'AI AUTOMATION',
-            durationSeconds: 5
-          });
-          // If the synthesized filename differed from requested safePath, ensure safePath has valid MP4 binary
-          if (!fs.existsSync(safePath)) {
-            const mp4Binary = buildMuxedVerticalMp4({
-              width: 1080,
-              height: 1920,
-              durationSeconds: 24,
-              fps: 30
-            });
-            fs.writeFileSync(safePath, Buffer.from(mp4Binary));
-          }
-        } else if (normalizedRel.startsWith('thumbnails/') && normalizedRel.endsWith('.svg')) {
-          const rawId = path.basename(normalizedRel, '.svg').replace(/^thumb_/, '');
-          serverMediaService.synthesizeAndPersistReelFile({
-            projectId: rawId,
-            title: `AI Reel ${rawId}`,
-            topic: 'AI Automation & Business Workflows',
-            formatName: 'AI AUTOMATION',
-            durationSeconds: 5
-          });
-        }
-      }
-
+      // Check physical file existence (do NOT generate fake placeholders)
       if (!fs.existsSync(safePath) || fs.statSync(safePath).isDirectory()) {
         res.statusCode = 404;
-        res.end('Media not found');
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify({ error: `Media file not found on disk: ${relativePath}`, success: false }));
         return;
       }
 
@@ -176,35 +146,81 @@ export function createAiApiHandler() {
 
       const contentType = mimeTypes[ext] || 'application/octet-stream';
       const stat = fs.statSync(safePath);
+      const isMedia = contentType.startsWith('video/') || contentType.startsWith('audio/');
 
-      const range = req.headers.range;
-      if (range && (contentType.startsWith('video/') || contentType.startsWith('audio/'))) {
-        const parts = range.replace(/bytes=/, '').split('-');
-        const start = parseInt(parts[0], 10);
-        const end = parts[1] ? parseInt(parts[1], 10) : stat.size - 1;
-        const chunksize = end - start + 1;
-        const file = fs.createReadStream(safePath, { start, end });
+      // Common CORS and caching headers for media streaming
+      res.setHeader('Accept-Ranges', 'bytes');
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
 
-        res.writeHead(206, {
-          'Content-Range': `bytes ${start}-${end}/${stat.size}`,
-          'Accept-Ranges': 'bytes',
-          'Content-Length': chunksize,
-          'Content-Type': contentType,
-          'Access-Control-Allow-Origin': '*',
-          'Cross-Origin-Resource-Policy': 'cross-origin'
-        });
-        file.pipe(res);
+      const rangeHeader = req.headers.range;
+      if (rangeHeader && isMedia) {
+        const match = rangeHeader.match(/bytes=(\d*)-(\d*)/);
+        if (match) {
+          let start = match[1] ? parseInt(match[1], 10) : NaN;
+          let end = match[2] ? parseInt(match[2], 10) : NaN;
+
+          if (isNaN(start) && !isNaN(end)) {
+            // Suffix range: bytes=-500 -> last 500 bytes
+            start = Math.max(0, stat.size - end);
+            end = stat.size - 1;
+          } else if (!isNaN(start) && isNaN(end)) {
+            // Open-ended range: bytes=500- -> from 500 to end
+            end = stat.size - 1;
+          }
+
+          if (isNaN(start) || isNaN(end) || start >= stat.size || start > end || start < 0) {
+            res.writeHead(416, {
+              'Content-Range': `bytes */${stat.size}`,
+              'Content-Type': contentType
+            });
+            res.end();
+            return;
+          }
+
+          const chunksize = end - start + 1;
+          res.writeHead(206, {
+            'Content-Range': `bytes ${start}-${end}/${stat.size}`,
+            'Content-Length': chunksize,
+            'Content-Type': contentType
+          });
+
+          if (req.method === 'HEAD') {
+            res.end();
+            return;
+          }
+
+          const stream = fs.createReadStream(safePath, { start, end });
+          stream.on('error', () => {
+            if (!res.headersSent) {
+              res.statusCode = 500;
+              res.end();
+            }
+          });
+          stream.pipe(res);
+          return;
+        }
+      }
+
+      // Full content (HTTP 200)
+      res.writeHead(200, {
+        'Content-Type': contentType,
+        'Content-Length': stat.size
+      });
+
+      if (req.method === 'HEAD') {
+        res.end();
         return;
       }
 
-      res.writeHead(200, {
-        'Content-Type': contentType,
-        'Content-Length': stat.size,
-        'Accept-Ranges': 'bytes',
-        'Access-Control-Allow-Origin': '*',
-        'Cross-Origin-Resource-Policy': 'cross-origin'
+      const fullStream = fs.createReadStream(safePath);
+      fullStream.on('error', () => {
+        if (!res.headersSent) {
+          res.statusCode = 500;
+          res.end();
+        }
       });
-      fs.createReadStream(safePath).pipe(res);
+      fullStream.pipe(res);
       return;
     }
 
@@ -243,14 +259,69 @@ export function createAiApiHandler() {
       return;
     }
 
+    const requestOrigin = (req.headers.origin as string) || '*';
     res.setHeader('Content-Type', 'application/json');
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Hub-Signature-256');
+    res.setHeader('Access-Control-Allow-Origin', requestOrigin);
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Hub-Signature-256, X-Request-ID, Accept, Origin, X-Requested-With');
+    if (requestOrigin !== '*') {
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
+    }
 
     if (req.method === 'OPTIONS') {
       res.statusCode = 204;
       res.end();
+      return;
+    }
+
+    // ==========================================
+    // 1b. HEALTH AND READINESS PROBES
+    // ==========================================
+    if (url === '/api/health' && req.method === 'GET') {
+      res.statusCode = 200;
+      res.end(
+        JSON.stringify({
+          status: 'ok',
+          uptimeSeconds: Math.floor((Date.now() - SERVER_START_TIME) / 1000),
+          timestamp: new Date().toISOString(),
+          version: '1.0.0',
+          environment: EnvConfig.nodeEnv || 'production'
+        })
+      );
+      return;
+    }
+
+    if (url === '/api/ready' && req.method === 'GET') {
+      const isSchedulerReady = persistentScheduler.isReady();
+      const storageDir = path.resolve(process.cwd(), 'data', 'storage');
+      let storageWritable = false;
+      try {
+        if (!fs.existsSync(storageDir)) fs.mkdirSync(storageDir, { recursive: true });
+        const testFile = path.join(storageDir, '.write-test');
+        fs.writeFileSync(testFile, 'ok', 'utf-8');
+        fs.unlinkSync(testFile);
+        storageWritable = true;
+      } catch {
+        storageWritable = false;
+      }
+
+      const mptStatus = await moneyPrinterTurboService.getStatus().catch(() => ({ available: false }));
+      const isReady = storageWritable;
+
+      res.statusCode = isReady ? 200 : 503;
+      res.end(
+        JSON.stringify({
+          ready: isReady,
+          uptimeSeconds: Math.floor((Date.now() - SERVER_START_TIME) / 1000),
+          timestamp: new Date().toISOString(),
+          checks: {
+            storage: storageWritable ? 'healthy' : 'unwritable',
+            scheduler: isSchedulerReady ? 'running' : 'initializing',
+            moneyPrinterTurbo: (mptStatus as any).available ? 'connected' : 'offline',
+            metaConfigured: serverMetaService.isConfigured()
+          }
+        })
+      );
       return;
     }
 
@@ -293,6 +364,45 @@ export function createAiApiHandler() {
         res.end(JSON.stringify({ success: true, account }));
       } catch (err: any) {
         res.statusCode = 400;
+        res.end(JSON.stringify({ success: false, error: err.message }));
+      }
+      return;
+    }
+
+    if (url === '/api/meta/published-media' && req.method === 'GET') {
+      try {
+        const limit = parseInt(queryParams.get('limit') || '20', 10);
+        let media: any[] = [];
+        if (serverMetaService.isConfigured()) {
+          try {
+            media = await serverMetaService.getPublishedMedia(limit);
+          } catch (err: any) {
+            Logger.warn('Could not fetch published media directly from Meta API, falling back to local records', { component: 'Meta' });
+          }
+        }
+        const localRecords = dailyProductionScheduler.getRecords().filter((r: any) => r.publishStatus === 'PUBLISHED');
+        res.statusCode = 200;
+        res.end(JSON.stringify({
+          success: true,
+          media,
+          localPublishedRecords: localRecords,
+          isMetaLive: serverMetaService.isConfigured()
+        }));
+      } catch (err: any) {
+        res.statusCode = 500;
+        res.end(JSON.stringify({ success: false, error: err.message }));
+      }
+      return;
+    }
+
+    if (url === '/api/trends/discover' && req.method === 'GET') {
+      try {
+        const forceFresh = queryParams.get('refresh') === 'true';
+        const trends = await trendDiscoveryEngine.discoverDailyTrends(forceFresh);
+        res.statusCode = 200;
+        res.end(JSON.stringify({ success: true, ...trends }));
+      } catch (err: any) {
+        res.statusCode = 500;
         res.end(JSON.stringify({ success: false, error: err.message }));
       }
       return;
@@ -695,6 +805,50 @@ export function createAiApiHandler() {
         return;
       }
 
+      // --- MONEYPRINTER TURBO VIDEO GENERATION ENDPOINTS ---
+      if (url === '/api/moneyprinter/status' && req.method === 'GET') {
+        try {
+          const status = await moneyPrinterTurboService.getStatus();
+          res.statusCode = 200;
+          res.end(JSON.stringify({ success: true, status }));
+        } catch (err: any) {
+          res.statusCode = 500;
+          res.end(JSON.stringify({ success: false, error: err.message }));
+        }
+        return;
+      }
+
+      if (url === '/api/moneyprinter/generate' && req.method === 'POST') {
+        try {
+          const result = await moneyPrinterTurboService.generateReel(parsedBody || {});
+          res.statusCode = 200;
+          res.end(JSON.stringify(result));
+        } catch (err: any) {
+          res.statusCode = 500;
+          res.end(JSON.stringify({ success: false, error: err.message }));
+        }
+        return;
+      }
+
+      if (url === '/api/moneyprinter/stage-task' && req.method === 'POST') {
+        try {
+          const { taskId, topic = 'MoneyPrinterTurbo AI Reel', script = '' } = parsedBody || {};
+          if (!taskId) {
+            res.statusCode = 400;
+            res.end(JSON.stringify({ success: false, error: 'taskId is required' }));
+            return;
+          }
+          const taskData = await moneyPrinterTurboService.pollTask(taskId, 5, 500);
+          const result = moneyPrinterTurboService.stageTaskResult(taskId, taskData, topic, script || taskData.script || topic);
+          res.statusCode = 200;
+          res.end(JSON.stringify(result));
+        } catch (err: any) {
+          res.statusCode = 500;
+          res.end(JSON.stringify({ success: false, error: err.message }));
+        }
+        return;
+      }
+
       // --- AI CONTENT GENERATION POST ENDPOINTS ---
       if (url === '/api/ai/generate' && req.method === 'POST') {
         try {
@@ -994,15 +1148,164 @@ export function createAiApiHandler() {
         return;
       }
 
+      // 0b0. POST /api/automation/record/upsert
+      if (url === '/api/automation/record/upsert' && req.method === 'POST') {
+        try {
+          const { record, records: recordsList } = parsedBody || {};
+          const itemsToUpsert = recordsList || (record ? [record] : []);
+          if (itemsToUpsert.length === 0) {
+            res.statusCode = 400;
+            res.end(JSON.stringify({ success: false, error: 'Missing record or records payload' }));
+            return;
+          }
+          const filePath = path.resolve(process.cwd(), 'data', 'storage', 'review_records.json');
+          const dir = path.dirname(filePath);
+          if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+
+          let currentRecords: any[] = [];
+          if (fs.existsSync(filePath)) {
+            try {
+              currentRecords = JSON.parse(fs.readFileSync(filePath, 'utf8')) || [];
+            } catch {}
+          }
+
+          for (const item of itemsToUpsert) {
+            const idx = currentRecords.findIndex((r: any) => r.id === item.id || r.reelId === item.id || (item.reelId && r.reelId === item.reelId));
+            if (idx >= 0) {
+              currentRecords[idx] = { ...currentRecords[idx], ...item };
+            } else {
+              currentRecords.unshift(item);
+            }
+          }
+
+          fs.writeFileSync(filePath, JSON.stringify(currentRecords, null, 2), 'utf8');
+          res.statusCode = 200;
+          res.end(JSON.stringify({ success: true, count: currentRecords.length, todayReel: currentRecords[0] }));
+        } catch (err: any) {
+          res.statusCode = 500;
+          res.end(JSON.stringify({ success: false, error: err.message }));
+        }
+        return;
+      }
+
+      // 0b1. POST /api/automation/approve-reel
+      if (url === '/api/automation/approve-reel' && req.method === 'POST') {
+        try {
+          const { reelId } = parsedBody || {};
+          if (!reelId) {
+            res.statusCode = 400;
+            res.end(JSON.stringify({ success: false, error: 'Missing reelId' }));
+            return;
+          }
+          const updated = dailyProductionScheduler.approveReel(reelId, 'dashboard');
+          res.statusCode = 200;
+          res.end(JSON.stringify({ success: true, todayReel: updated }));
+        } catch (err: any) {
+          res.statusCode = 400;
+          res.end(JSON.stringify({ success: false, error: err.message }));
+        }
+        return;
+      }
+
+      // 0b2. POST /api/automation/reject-reel
+      if (url === '/api/automation/reject-reel' && req.method === 'POST') {
+        try {
+          const { reelId, reason } = parsedBody || {};
+          if (!reelId) {
+            res.statusCode = 400;
+            res.end(JSON.stringify({ success: false, error: 'Missing reelId' }));
+            return;
+          }
+          const updated = dailyProductionScheduler.rejectReel(reelId, reason);
+          res.statusCode = 200;
+          res.end(JSON.stringify({ success: true, todayReel: updated }));
+        } catch (err: any) {
+          res.statusCode = 400;
+          res.end(JSON.stringify({ success: false, error: err.message }));
+        }
+        return;
+      }
+
+      // 0b3. GET /api/automation/daily-schedule/status
+      if (url === '/api/automation/daily-schedule/status' && req.method === 'GET') {
+        try {
+          const status = dailyProductionScheduler.getWorkflowStatus();
+          res.statusCode = 200;
+          res.end(JSON.stringify({ success: true, status }));
+        } catch (err: any) {
+          res.statusCode = 500;
+          res.end(JSON.stringify({ success: false, error: err.message }));
+        }
+        return;
+      }
+
+      // 0b4. POST /api/automation/daily-schedule/trigger-publish
+      if (url === '/api/automation/daily-schedule/trigger-publish' && req.method === 'POST') {
+        try {
+          const { reelId, dryRun } = parsedBody || {};
+          const result = await dailyProductionScheduler.execute9PmPublishSlot(reelId, dryRun === true);
+          res.statusCode = 200;
+          res.end(JSON.stringify({ success: true, result }));
+        } catch (err: any) {
+          res.statusCode = 400;
+          res.end(JSON.stringify({ success: false, error: err.message }));
+        }
+        return;
+      }
+
+      // POST /api/trends/refresh
+      if (url === '/api/trends/refresh' && req.method === 'POST') {
+        try {
+          const trends = await trendDiscoveryEngine.discoverDailyTrends(true);
+          res.statusCode = 200;
+          res.end(JSON.stringify({ success: true, ...trends }));
+        } catch (err: any) {
+          res.statusCode = 500;
+          res.end(JSON.stringify({ success: false, error: err.message }));
+        }
+        return;
+      }
+
+      // POST /api/trends/generate-reel
+      if (url === '/api/trends/generate-reel' && req.method === 'POST') {
+        try {
+          const { topic } = parsedBody || {};
+          const record = await dailyProductionScheduler.generateDailyAutonomousReel(topic);
+          res.statusCode = 200;
+          res.end(JSON.stringify({ success: true, todayReel: record }));
+        } catch (err: any) {
+          res.statusCode = 500;
+          res.end(JSON.stringify({ success: false, error: err.message }));
+        }
+        return;
+      }
+
+      // POST /api/production/run-autonomous-generation
+      if (url === '/api/production/run-autonomous-generation' && req.method === 'POST') {
+        try {
+          const { topic } = parsedBody || {};
+          const record = await dailyProductionScheduler.generateDailyAutonomousReel(topic);
+          res.statusCode = 200;
+          res.end(JSON.stringify({ success: true, todayReel: record }));
+        } catch (err: any) {
+          res.statusCode = 500;
+          res.end(JSON.stringify({ success: false, error: err.message }));
+        }
+        return;
+      }
+
       // 0c. POST /api/automation/regenerate-visuals
       if (url === '/api/automation/regenerate-visuals' && req.method === 'POST') {
         try {
           const { reelId } = parsedBody || {};
+          if (reelId) {
+            dailyProductionScheduler.assertCanRegenerate(reelId);
+          }
           const updated = await fastReelEngine.regenerateVisualsOnly(reelId);
           res.statusCode = 200;
           res.end(JSON.stringify({ success: !!updated, todayReel: updated }));
         } catch (err: any) {
-          res.statusCode = 500;
+          res.statusCode = 400;
           res.end(JSON.stringify({ success: false, error: err.message }));
         }
         return;
@@ -1012,11 +1315,14 @@ export function createAiApiHandler() {
       if (url === '/api/automation/regenerate-voice' && req.method === 'POST') {
         try {
           const { reelId } = parsedBody || {};
+          if (reelId) {
+            dailyProductionScheduler.assertCanRegenerate(reelId);
+          }
           const updated = await fastReelEngine.regenerateVoiceOnly(reelId);
           res.statusCode = 200;
           res.end(JSON.stringify({ success: !!updated, todayReel: updated }));
         } catch (err: any) {
-          res.statusCode = 500;
+          res.statusCode = 400;
           res.end(JSON.stringify({ success: false, error: err.message }));
         }
         return;

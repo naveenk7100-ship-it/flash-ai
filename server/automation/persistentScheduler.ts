@@ -311,6 +311,10 @@ export class PersistentScheduler {
   public getArmedTimersCount(): number {
     return this.activeTimers.size;
   }
+
+  public isReady(): boolean {
+    return this.isInitialized;
+  }
 }
 
 export const persistentScheduler = new PersistentScheduler();

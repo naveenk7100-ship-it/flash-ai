@@ -6,6 +6,7 @@ import { MobileBottomNav } from './components/layout/MobileBottomNav';
 import { NotificationToast } from './components/layout/NotificationToast';
 
 import { DashboardOverview } from './components/dashboard/DashboardOverview';
+import { TrendsFeedView } from './components/trends/TrendsFeedView';
 import { ContentPlanner } from './components/planner/ContentPlanner';
 import { ContentGenerator } from './components/generator/ContentGenerator';
 import { ApprovalQueue } from './components/approval/ApprovalQueue';
@@ -28,6 +29,7 @@ const MainContent: React.FC = () => {
     <main className="flex-1 p-4 lg:p-6 max-w-7xl mx-auto w-full overflow-x-hidden">
       <ErrorBoundary fallbackTitle="View Temporarily Unavailable">
         {activeTab === 'dashboard' && <DashboardOverview />}
+        {activeTab === 'trends' && <TrendsFeedView />}
         {activeTab === 'automation' && <AutomationControlCenter />}
         {activeTab === 'planner' && <ContentPlanner />}
         {activeTab === 'generator' && <ContentGenerator />}

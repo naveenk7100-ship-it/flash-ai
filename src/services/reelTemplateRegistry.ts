@@ -21,6 +21,192 @@ import type {
 } from '../types/reelProduction.ts';
 
 export const TEMPLATE_REGISTRY: Record<string, ReelTemplateDefinition> = {
+  // =========================================================================
+  // 5 COHESIVE DISTINCT PRESENTATION STYLES
+  // =========================================================================
+  'cinematic-storytelling': {
+    id: 'cinematic-storytelling',
+    name: 'Cinematic Tech Storytelling',
+    description: 'Atmospheric dark slate visuals, volumetric energy glows, floating glassmorphic panels, and high-concept paradigm shifts.',
+    category: 'Story',
+    visualLayoutType: 'cinematic_narrative',
+    themeColors: {
+      primary: '#38BDF8',
+      secondary: '#818CF8',
+      accent: '#C084FC',
+      bgGradient: 'from-[#06080F] via-[#0B132B] to-[#030509]',
+      cardBg: '#0D1527',
+      textColor: '#FFFFFF',
+      badgeBg: 'rgba(56, 189, 248, 0.15)'
+    },
+    sampleHook: 'Why the shift from chat assistants to autonomous coding agents changes everything in 2026.',
+    keyHighlights: ['🌌 Atmospheric Dark Slate Aesthetic', '✨ Layered Glassmorphic Depth', '🔭 Macro Industry Paradigm Shift', '💭 High-Impact Narrative Takeaway'],
+    defaultPacing: {
+      hookDuration: 3,
+      problemDuration: 6,
+      demoDuration: 15,
+      resultDuration: 6,
+      ctaDuration: 4
+    },
+    visualSourceSequence: ['screenshot', 'screen_recording', 'screenshot', 'screenshot', 'visual_placeholder'],
+    recommendedTransitions: ['fade', 'zoom_in', 'slide_left', 'fade', 'cut'],
+    soundEffects: ['whoosh', 'chime', 'click', 'pop', 'none'],
+    layoutPreset: {
+      safeAreaTopPercent: 15,
+      safeAreaBottomPercent: 20,
+      safeAreaRightPercent: 15,
+      captionYPercent: 72,
+      ctaButtonColor: '#38BDF8'
+    }
+  },
+
+  'clean-editorial': {
+    id: 'clean-editorial',
+    name: 'Clean Editorial Explainer',
+    description: 'Refined editorial typography, elegant numbered concept cards, structured mental models, and generous breathing room.',
+    category: 'Explainer',
+    visualLayoutType: 'explainer_cards',
+    themeColors: {
+      primary: '#F59E0B',
+      secondary: '#FBBF24',
+      accent: '#FEF08A',
+      bgGradient: 'from-[#090C15] via-[#121A2F] to-[#060912]',
+      cardBg: '#0E172A',
+      textColor: '#FFFFFF',
+      badgeBg: 'rgba(245, 158, 11, 0.15)'
+    },
+    sampleHook: 'How modern AI reasoning engines break down complex problems step by step.',
+    keyHighlights: ['📖 Refined Editorial Typography', '📐 Structured Numbered Cards (01, 02, 03)', '🧠 Clear Concept Mental Models', '🎯 High-Contrast Zero-Jargon Takeaway'],
+    defaultPacing: {
+      hookDuration: 3,
+      problemDuration: 6,
+      demoDuration: 15,
+      resultDuration: 6,
+      ctaDuration: 4
+    },
+    visualSourceSequence: ['screenshot', 'screenshot', 'screen_recording', 'screenshot', 'visual_placeholder'],
+    recommendedTransitions: ['cut', 'slide_right', 'cut', 'fade', 'cut'],
+    soundEffects: ['chime', 'click', 'pop', 'whoosh', 'none'],
+    layoutPreset: {
+      safeAreaTopPercent: 15,
+      safeAreaBottomPercent: 20,
+      safeAreaRightPercent: 15,
+      captionYPercent: 72,
+      ctaButtonColor: '#F59E0B'
+    }
+  },
+
+  'product-workflow-demo': {
+    id: 'product-workflow-demo',
+    name: 'Product & Workflow Demo',
+    description: 'Authentic software interface walkthrough, live prompt input, dynamic cursor interactions, real-time code generation, and interactive results.',
+    category: 'Demo',
+    visualLayoutType: 'product_demo_ui',
+    themeColors: {
+      primary: '#00F5FF',
+      secondary: '#3B82F6',
+      accent: '#8B5CF6',
+      bgGradient: 'from-[#07090E] via-[#0A1226] to-[#020408]',
+      cardBg: '#0F172A',
+      textColor: '#FFFFFF',
+      badgeBg: 'rgba(0, 245, 255, 0.15)'
+    },
+    sampleHook: 'Watch this AI workspace turn a single prompt into a working full-stack app in seconds.',
+    keyHighlights: ['⚡ Real-Time Interface Interaction', '🖱️ Dynamic Glide Cursor & Action Pulses', '📦 Split-Screen Live Workspace', '🚀 Zero-Friction Practical Workflow'],
+    defaultPacing: {
+      hookDuration: 3,
+      problemDuration: 5,
+      demoDuration: 18,
+      resultDuration: 6,
+      ctaDuration: 4
+    },
+    visualSourceSequence: ['screenshot', 'screen_recording', 'website_demo', 'screen_recording', 'visual_placeholder'],
+    recommendedTransitions: ['pop', 'slide_left', 'zoom_in', 'fade', 'cut'],
+    soundEffects: ['whoosh', 'click', 'click', 'pop', 'none'],
+    layoutPreset: {
+      safeAreaTopPercent: 15,
+      safeAreaBottomPercent: 20,
+      safeAreaRightPercent: 15,
+      captionYPercent: 72,
+      ctaButtonColor: '#00F5FF'
+    }
+  },
+
+  'developer-studio': {
+    id: 'developer-studio',
+    name: 'Developer & Code Studio',
+    description: 'Dark IDE with line numbers, syntax-highlighted real code (Python/TS/Rust), terminal CLI execution, and architecture diagrams.',
+    category: 'Education',
+    visualLayoutType: 'how_to_steps',
+    themeColors: {
+      primary: '#10B981',
+      secondary: '#34D399',
+      accent: '#6EE7B7',
+      bgGradient: 'from-[#050C0A] via-[#0A1F18] to-[#020705]',
+      cardBg: '#091E16',
+      textColor: '#FFFFFF',
+      badgeBg: 'rgba(16, 185, 129, 0.18)'
+    },
+    sampleHook: 'Run local LLMs with one terminal command: Here is the fastest developer workflow.',
+    keyHighlights: ['💻 Dark IDE with Syntax Highlighting', '⌨️ Real Terminal CLI Execution ($)', '⚡ Execution Latency & Benchmark Badge', '🔗 Verified GitHub Repository Attribution'],
+    defaultPacing: {
+      hookDuration: 3,
+      problemDuration: 6,
+      demoDuration: 16,
+      resultDuration: 6,
+      ctaDuration: 4
+    },
+    visualSourceSequence: ['screenshot', 'screen_recording', 'screenshot', 'screenshot', 'visual_placeholder'],
+    recommendedTransitions: ['cut', 'slide_left', 'zoom_in', 'fade', 'cut'],
+    soundEffects: ['click', 'click', 'chime', 'pop', 'none'],
+    layoutPreset: {
+      safeAreaTopPercent: 15,
+      safeAreaBottomPercent: 20,
+      safeAreaRightPercent: 15,
+      captionYPercent: 72,
+      ctaButtonColor: '#10B981'
+    }
+  },
+
+  'trend-breakdown': {
+    id: 'trend-breakdown',
+    name: 'Dynamic Trend & Data Breakdown',
+    description: 'Milestone timeline, side-by-side metric comparison bars, tokens/sec speed throughput, and verified community attribution badges.',
+    category: 'Data',
+    visualLayoutType: 'data_insight_charts',
+    themeColors: {
+      primary: '#EC4899',
+      secondary: '#F43F5E',
+      accent: '#FB7185',
+      bgGradient: 'from-[#12050D] via-[#240A1A] to-[#080206]',
+      cardBg: '#1E0C17',
+      textColor: '#FFFFFF',
+      badgeBg: 'rgba(236, 72, 153, 0.18)'
+    },
+    sampleHook: 'The fastest growing open-source AI models this week ranked by speed and accuracy.',
+    keyHighlights: ['⏱️ Milestone Progression Timeline', '📊 Side-by-Side Spec Comparison Bars', '🏷️ Verified Source Badges (HN / GitHub)', '📈 High-Velocity Market Trajectory'],
+    defaultPacing: {
+      hookDuration: 3,
+      problemDuration: 6,
+      demoDuration: 16,
+      resultDuration: 6,
+      ctaDuration: 4
+    },
+    visualSourceSequence: ['screenshot', 'screenshot', 'screenshot', 'screenshot', 'visual_placeholder'],
+    recommendedTransitions: ['pop', 'slide_right', 'zoom_in', 'fade', 'cut'],
+    soundEffects: ['pop', 'chime', 'click', 'whoosh', 'none'],
+    layoutPreset: {
+      safeAreaTopPercent: 15,
+      safeAreaBottomPercent: 20,
+      safeAreaRightPercent: 15,
+      captionYPercent: 72,
+      ctaButtonColor: '#EC4899'
+    }
+  },
+
+  // =========================================================================
+  // EXISTING TEMPLATE FORMATS
+  // =========================================================================
   'product-demo': {
     id: 'product-demo',
     name: 'Product Demo',
@@ -469,6 +655,11 @@ TEMPLATE_REGISTRY['website-reveal'] = TEMPLATE_REGISTRY['product-demo'];
 export class ReelTemplateRegistry {
   public getAllTemplates(): ReelTemplateDefinition[] {
     const uniqueIds = [
+      'cinematic-storytelling',
+      'clean-editorial',
+      'product-workflow-demo',
+      'developer-studio',
+      'trend-breakdown',
       'product-demo',
       'tool-showcase',
       'news-update',

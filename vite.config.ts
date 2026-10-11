@@ -49,6 +49,21 @@ export default defineConfig(({ mode }) => {
       'process.env.WHATSAPP_PHONE_NUMBER_ID': JSON.stringify(env.WHATSAPP_PHONE_NUMBER_ID || ''),
       'process.env.WHATSAPP_RECIPIENT_NUMBER': JSON.stringify(env.WHATSAPP_RECIPIENT_NUMBER || '919398421460'),
     },
+    server: {
+      allowedHosts: true,
+      watch: {
+        ignored: [
+          '**/media/**',
+          '**/data/**',
+          '**/scratch/**',
+          '**/.git/**',
+          '**/dist/**'
+        ]
+      }
+    },
+    preview: {
+      allowedHosts: true
+    },
     plugins: [
       react(),
       tailwindcss(),

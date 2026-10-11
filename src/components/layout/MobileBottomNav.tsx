@@ -3,10 +3,6 @@ import { useApp } from '../../context/AppContext';
 import type { AppTab } from '../../context/AppContext';
 import {
   LayoutDashboard,
-  CalendarDays,
-  Sparkles,
-  CheckSquare,
-  Users,
   MoreHorizontal,
   BarChart3,
   Sliders,
@@ -16,19 +12,20 @@ import {
   X,
   Film,
   MessageSquare,
-  Zap
+  Zap,
+  TrendingUp
 } from 'lucide-react';
 
 export const MobileBottomNav: React.FC = () => {
   const { activeTab, setActiveTab, stats, publishingMode } = useApp();
   const [showMoreMenu, setShowMoreMenu] = useState(false);
 
-  const mainTabs: { id: AppTab; label: string; icon: React.ElementType; badge?: number }[] = [
-    { id: 'dashboard', label: 'Home', icon: LayoutDashboard },
-    { id: 'planner', label: 'Planner', icon: CalendarDays },
-    { id: 'generator', label: 'Generate', icon: Sparkles },
-    { id: 'approval', label: 'Approval', icon: CheckSquare, badge: stats.awaitingApprovalCount },
-    { id: 'leads', label: 'Leads', icon: Users, badge: stats.activeLeadsCount }
+  const mainTabs: { id: AppTab; label: string; icon: React.ElementType; badge?: number | string }[] = [
+    { id: 'dashboard', label: 'Overview', icon: LayoutDashboard },
+    { id: 'trends', label: 'Trends', icon: TrendingUp },
+    { id: 'media', label: 'Studio', icon: Film },
+    { id: 'automation', label: 'Queue', icon: Zap },
+    { id: 'published', label: 'Published', icon: Share2, badge: stats.publishedCount > 0 ? stats.publishedCount : undefined }
   ];
 
   const moreTabs: { id: AppTab; label: string; icon: React.ElementType; desc: string; badge?: string }[] = [
@@ -111,7 +108,7 @@ export const MobileBottomNav: React.FC = () => {
               >
                 <div className="relative">
                   <Icon className={`w-5 h-5 ${isActive ? 'text-cyan-400 scale-105' : ''}`} />
-                  {tab.badge !== undefined && tab.badge > 0 && (
+                  {tab.badge !== undefined && (typeof tab.badge === 'number' ? tab.badge > 0 : Boolean(tab.badge)) && (
                     <span className="absolute -top-1.5 -right-2 w-4 h-4 bg-amber-500 text-black font-bold text-[9px] rounded-full flex items-center justify-center animate-pulse">
                       {tab.badge}
                     </span>

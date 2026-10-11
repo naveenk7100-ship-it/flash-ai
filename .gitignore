@@ -12,11 +12,17 @@ node_modules
 dist
 dist-ssr
 *.local
+.venv
+**/__pycache__
+*.py[cod]
+services/moneyprinterturbo/.venv/
+services/moneyprinterturbo/storage/
 
 # Environment & Secrets (Strict Security First)
 .env
 .env.*
 !.env.example
+!.env.production.example
 
 # Root Media Storage & Scratch (Do NOT ignore src/components/media or server/media)
 /media/
@@ -27,6 +33,7 @@ dist-ssr
 *.mp3
 *.wav
 *.m4a
+DEBUG_*.png
 
 # Editor & OS files
 .vscode/*

@@ -979,7 +979,15 @@ export interface InternalNotification {
     | 'PUBLISH_FAILURE'
     | 'NEW_LEAD'
     | 'ANALYTICS_SYNC_COMPLETE'
-    | 'DAILY_BRIEF_READY';
+    | 'DAILY_BRIEF_READY'
+    | 'REEL_AUTONOMOUS_APPROVED'
+    | 'REEL_NEEDS_REVIEW'
+    | 'REEL_QC_FAILED'
+    | 'REEL_GENERATION_FAILED'
+    | 'REEL_APPROVED'
+    | 'REEL_REJECTED'
+    | 'PUBLISH_HELD'
+    | 'REVIEW_WINDOW_MISSED';
   title: string;
   message: string;
   timestamp: string;

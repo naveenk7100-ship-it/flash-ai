@@ -3,11 +3,7 @@ import { useApp } from '../../context/AppContext';
 import type { AppTab } from '../../context/AppContext';
 import {
   LayoutDashboard,
-  CalendarDays,
-  Sparkles,
-  CheckSquare,
   Share2,
-  Activity,
   Users,
   BarChart3,
   Sliders,
@@ -15,7 +11,8 @@ import {
   ChevronRight,
   Zap,
   Film,
-  MessageSquare
+  MessageSquare,
+  TrendingUp
 } from 'lucide-react';
 
 interface NavItem {
@@ -30,65 +27,55 @@ interface NavItem {
 export const Sidebar: React.FC = () => {
   const { activeTab, setActiveTab, stats, publishingMode, metaStatus } = useApp();
 
-  const navItems: NavItem[] = [
+  const primaryNavItems: NavItem[] = [
     {
       id: 'dashboard',
-      label: 'Dashboard',
+      label: 'Overview',
       icon: LayoutDashboard
     },
     {
-      id: 'automation',
-      label: 'Automation OS',
-      icon: Zap,
-      badge: 'RUN',
-      badgeColor: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40',
-      highlight: true
-    },
-    {
-      id: 'planner',
-      label: 'Content Planner',
-      icon: CalendarDays,
-      badge: stats.plannedCount > 0 ? stats.plannedCount : undefined,
-      badgeColor: 'bg-blue-500/20 text-blue-300 border-blue-500/30'
-    },
-    {
-      id: 'generator',
-      label: 'AI Content Generator',
-      icon: Sparkles,
+      id: 'trends',
+      label: 'Trends & Ideas',
+      icon: TrendingUp,
+      badge: 'LIVE',
+      badgeColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40',
       highlight: true
     },
     {
       id: 'media',
-      label: 'Reel & Media Studio',
+      label: 'Content Studio',
       icon: Film,
       badge: '9:16',
       badgeColor: 'bg-purple-500/20 text-purple-300 border-purple-500/30'
     },
     {
-      id: 'approval',
-      label: 'Approval Queue',
-      icon: CheckSquare,
-      badge: stats.awaitingApprovalCount > 0 ? stats.awaitingApprovalCount : undefined,
-      badgeColor: 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+      id: 'automation',
+      label: 'Calendar & Queue',
+      icon: Zap,
+      badge: '21:00 IST',
+      badgeColor: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40'
     },
     {
       id: 'published',
-      label: 'Published Content',
+      label: 'Published Reels',
       icon: Share2,
       badge: stats.publishedCount > 0 ? stats.publishedCount : undefined,
       badgeColor: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40'
     },
+    {
+      id: 'settings',
+      label: 'Settings & Meta API',
+      icon: Sliders
+    }
+  ];
+
+  const secondaryNavItems: NavItem[] = [
     {
       id: 'inbox',
       label: 'Inbound & Engagement',
       icon: MessageSquare,
       badge: 'AUTO',
       badgeColor: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40'
-    },
-    {
-      id: 'activity',
-      label: 'Activity Log',
-      icon: Activity
     },
     {
       id: 'leads',
@@ -99,7 +86,7 @@ export const Sidebar: React.FC = () => {
     },
     {
       id: 'analytics',
-      label: 'Analytics',
+      label: 'Performance Analytics',
       icon: BarChart3,
       badge: publishingMode === 'LIVE' && metaStatus.isConnected ? 'LIVE' : 'DEMO',
       badgeColor:
@@ -111,11 +98,6 @@ export const Sidebar: React.FC = () => {
       id: 'architecture',
       label: 'Engine Architecture',
       icon: GitBranch
-    },
-    {
-      id: 'settings',
-      label: 'Settings & Meta API',
-      icon: Sliders
     }
   ];
 
@@ -144,49 +126,104 @@ export const Sidebar: React.FC = () => {
       </div>
 
       {/* Navigation Links */}
-      <nav className="space-y-1 flex-1 overflow-y-auto pr-1">
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = activeTab === item.id;
+      <nav className="space-y-4 flex-1 overflow-y-auto pr-1">
+        <div>
+          <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider px-3 mb-1.5">
+            Studio Engine
+          </div>
+          <div className="space-y-1">
+            {primaryNavItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = activeTab === item.id;
 
-          return (
-            <button
-              key={item.id}
-              onClick={() => setActiveTab(item.id)}
-              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all group ${
-                isActive
-                  ? 'bg-cyan-500/10 text-cyan-300 border border-cyan-500/40 shadow-sm shadow-cyan-500/10'
-                  : 'text-slate-400 hover:text-slate-100 hover:bg-slate-850/60 border border-transparent'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <Icon
-                  className={`w-4 h-4 transition-colors ${
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setActiveTab(item.id)}
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all group ${
                     isActive
-                      ? 'text-cyan-400'
-                      : item.highlight
-                      ? 'text-cyan-400 group-hover:scale-110'
-                      : 'text-slate-400 group-hover:text-slate-200'
+                      ? 'bg-cyan-500/10 text-cyan-300 border border-cyan-500/40 shadow-sm shadow-cyan-500/10'
+                      : 'text-slate-400 hover:text-slate-100 hover:bg-slate-850/60 border border-transparent'
                   }`}
-                />
-                <span className={isActive ? 'font-semibold' : ''}>{item.label}</span>
-              </div>
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Icon
+                      className={`w-4 h-4 transition-colors ${
+                        isActive
+                          ? 'text-cyan-400'
+                          : item.highlight
+                          ? 'text-cyan-400 group-hover:scale-110'
+                          : 'text-slate-400 group-hover:text-slate-200'
+                      }`}
+                    />
+                    <span className={isActive ? 'font-semibold' : ''}>{item.label}</span>
+                  </div>
 
-              <div className="flex items-center gap-1.5">
-                {item.badge !== undefined && (
-                  <span
-                    className={`px-1.5 py-0.5 text-[10px] font-semibold rounded-md border ${
-                      item.badgeColor || 'bg-slate-800 text-slate-300 border-slate-700'
-                    }`}
-                  >
-                    {item.badge}
-                  </span>
-                )}
-                {isActive && <ChevronRight className="w-3.5 h-3.5 text-cyan-400" />}
-              </div>
-            </button>
-          );
-        })}
+                  <div className="flex items-center gap-1.5">
+                    {item.badge !== undefined && (
+                      <span
+                        className={`px-1.5 py-0.5 text-[9px] font-semibold rounded-md border ${
+                          item.badgeColor || 'bg-slate-800 text-slate-300 border-slate-700'
+                        }`}
+                      >
+                        {item.badge}
+                      </span>
+                    )}
+                    {isActive && <ChevronRight className="w-3.5 h-3.5 text-cyan-400" />}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div>
+          <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider px-3 mb-1.5">
+            Operations & Growth
+          </div>
+          <div className="space-y-1">
+            {secondaryNavItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = activeTab === item.id;
+
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setActiveTab(item.id)}
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all group ${
+                    isActive
+                      ? 'bg-cyan-500/10 text-cyan-300 border border-cyan-500/40 shadow-sm shadow-cyan-500/10'
+                      : 'text-slate-400 hover:text-slate-100 hover:bg-slate-850/60 border border-transparent'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Icon
+                      className={`w-4 h-4 transition-colors ${
+                        isActive
+                          ? 'text-cyan-400'
+                          : 'text-slate-400 group-hover:text-slate-200'
+                      }`}
+                    />
+                    <span className={isActive ? 'font-semibold' : ''}>{item.label}</span>
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
+                    {item.badge !== undefined && (
+                      <span
+                        className={`px-1.5 py-0.5 text-[9px] font-semibold rounded-md border ${
+                          item.badgeColor || 'bg-slate-800 text-slate-300 border-slate-700'
+                        }`}
+                      >
+                        {item.badge}
+                      </span>
+                    )}
+                    {isActive && <ChevronRight className="w-3.5 h-3.5 text-cyan-400" />}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
       </nav>
 
       {/* Bottom Account Status */}

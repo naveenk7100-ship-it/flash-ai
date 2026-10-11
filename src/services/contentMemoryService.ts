@@ -48,12 +48,26 @@ export class ContentMemoryService {
 
   private loadFromStorage(): void {
     try {
-      if (typeof window !== 'undefined' && window.localStorage) {
-        const raw = localStorage.getItem(STORAGE_KEY);
+      const g = typeof globalThis !== 'undefined' ? (globalThis as any) : null;
+      if (g && g.localStorage) {
+        const raw = g.localStorage.getItem(STORAGE_KEY);
         if (raw) {
           this.records = JSON.parse(raw);
           return;
         }
+      } else if (typeof (globalThis as any).window === 'undefined') {
+        try {
+          const proc = (globalThis as any).process;
+          const fs = proc?.getBuiltinModule ? proc.getBuiltinModule('node:fs') : null;
+          const path = proc?.getBuiltinModule ? proc.getBuiltinModule('node:path') : null;
+          if (fs && path) {
+            const filePath = path.resolve(proc.cwd(), 'data', 'storage', 'content_memory.json');
+            if (fs.existsSync(filePath)) {
+              this.records = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+              return;
+            }
+          }
+        } catch {}
       }
     } catch {
       // In-memory fallback
@@ -105,8 +119,21 @@ export class ContentMemoryService {
 
   private saveToStorage(): void {
     try {
-      if (typeof window !== 'undefined' && window.localStorage) {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(this.records.slice(-100)));
+      const g = typeof globalThis !== 'undefined' ? (globalThis as any) : null;
+      if (g && g.localStorage) {
+        g.localStorage.setItem(STORAGE_KEY, JSON.stringify(this.records.slice(-100)));
+      } else if (typeof (globalThis as any).window === 'undefined') {
+        try {
+          const proc = (globalThis as any).process;
+          const fs = proc?.getBuiltinModule ? proc.getBuiltinModule('node:fs') : null;
+          const path = proc?.getBuiltinModule ? proc.getBuiltinModule('node:path') : null;
+          if (fs && path) {
+            const filePath = path.resolve(proc.cwd(), 'data', 'storage', 'content_memory.json');
+            const dir = path.dirname(filePath);
+            if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+            fs.writeFileSync(filePath, JSON.stringify(this.records.slice(-100), null, 2), 'utf8');
+          }
+        } catch {}
       }
     } catch {
       // In-memory
@@ -146,6 +173,24 @@ export class ContentMemoryService {
   /**
    * Checks whether candidate content duplicates or closely mirrors past content.
    */
+  public checkDuplicate(candidate: {
+    topic: string;
+    hook: string;
+    formatId?: string;
+    scriptConcept?: string;
+    visualConcept?: string;
+  }): MemoryCheckResult {
+    return this.evaluateCandidate(candidate);
+  }
+
+  public checkScriptSimilarity(script: string, topic: string, hook: string): MemoryCheckResult {
+    return this.evaluateCandidate({
+      topic,
+      hook,
+      scriptConcept: script
+    });
+  }
+
   public evaluateCandidate(candidate: {
     id?: string;
     topic: string;
@@ -311,6 +356,63 @@ export class ContentMemoryService {
     this.records = [];
     this.saveToStorage();
   }
+
+  /**
+   * Evaluates visual composition diversity against recent reels to guarantee unique visual treatments.
+   */
+  public checkVisualDiversity(current: {
+    templateId: string;
+    topic: string;
+    dominantVisualType: string;
+    sceneCount: number;
+    scriptHash: string;
+    voiceHash: string;
+  }): { isUnique: boolean; similarityScore: number; diversityVariant: number; reason: string } {
+    const recent = this.records.slice(-10);
+    let highestSim = 0;
+    let matchCount = 0;
+
+    for (const rec of recent) {
+      if (rec.formatId === current.templateId) {
+        matchCount++;
+        const topicSim = this.calculateJaccardSimilarity(
+          this.tokenize(rec.topic),
+          this.tokenize(current.topic)
+        );
+        if (topicSim > highestSim) {
+          highestSim = topicSim;
+        }
+      }
+    }
+
+    const similarityScore = Math.round(highestSim * 100);
+    const diversityVariant = (matchCount % 3) + 1; // 1, 2, or 3 for layout/camera rotation
+
+    return {
+      isUnique: similarityScore < 85,
+      similarityScore,
+      diversityVariant,
+      reason: similarityScore >= 85
+        ? `High template overlap (${similarityScore}%), applied dynamic composition variant #${diversityVariant}`
+        : `Visual composition unique (similarity ${similarityScore}%)`
+    };
+  }
+}
+
+export interface VisualCompositionFingerprint {
+  id: string;
+  reelId: string;
+  templateId: string;
+  topic: string;
+  dominantVisualType: string;
+  sceneCount: number;
+  sceneStructure: string[];
+  cameraMovements: string[];
+  layoutVariant: number;
+  scriptHash: string;
+  voiceHash: string;
+  createdAt: string;
 }
 
 export const contentMemoryService = new ContentMemoryService();
+

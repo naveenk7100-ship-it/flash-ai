@@ -1,0 +1,11 @@
+node_modules
+dist
+scratch
+.git
+.github
+.env
+.env.local
+.system_generated
+services/moneyprinterturbo/.venv
+services/moneyprinterturbo/storage
+media/renders/*.mp4

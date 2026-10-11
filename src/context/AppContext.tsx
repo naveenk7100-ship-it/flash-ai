@@ -19,6 +19,7 @@ import { schedulerService } from '../services/schedulerService';
 
 export type AppTab =
   | 'dashboard'
+  | 'trends'
   | 'automation'
   | 'planner'
   | 'generator'
@@ -185,6 +186,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const refreshMetaStatus = useCallback(async () => {
     const status = await metaApiService.getConnectionStatus();
     setMetaStatus(status);
+    if (status.isConnected && status.mode) {
+      setPublishingModeState(status.mode);
+    }
   }, []);
 
   useEffect(() => {
@@ -718,7 +722,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setGenerationHistory(storageService.getHistory());
     setPublishingJobs(storageService.getPublishingJobs());
     setActivityLogs(storageService.getActivityLogs());
-    setPublishingModeState('DEMO');
+    setPublishingModeState('LIVE');
     showToast('Reset all data to default FLASH.Ai seed state', 'info');
   };
 

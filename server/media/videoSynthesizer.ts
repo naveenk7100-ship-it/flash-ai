@@ -387,9 +387,9 @@ export function synthesizeAndPersistServerReel(
   initMediaStorage();
 
   const rawId = options.projectId || `reel-${Date.now()}`;
-  const sanitizedId = sanitizeFilename(rawId.replace(/^proj-/, '').replace(/^reel_/, ''));
-  const filename = `reel_proj-${sanitizedId}.mp4`;
-  const thumbFilename = `thumb_proj-${sanitizedId}.svg`;
+  const cleanId = sanitizeFilename(rawId.replace(/^proj-/, '').replace(/^reel_/, ''));
+  const filename = `reel_${cleanId}.mp4`;
+  const thumbFilename = `thumb_${cleanId}.svg`;
 
   const videoPath = path.join(MEDIA_DIRS.renders, filename);
   const thumbPath = path.join(MEDIA_DIRS.thumbnails, thumbFilename);
@@ -418,7 +418,7 @@ export function synthesizeAndPersistServerReel(
   // Check default candidate audio if none provided
   if (!mp3AudioBuffer) {
     const defaultVoiceFiles = [
-      path.join(MEDIA_DIRS.audio, `voice_${sanitizedId}.mp3`),
+      path.join(MEDIA_DIRS.audio, `voice_${cleanId}.mp3`),
       path.join(MEDIA_DIRS.audio, `voice_support_triaging_37s.mp3`)
     ];
     for (const f of defaultVoiceFiles) {
@@ -475,6 +475,11 @@ export function synthesizeAndPersistServerReel(
   `.trim();
 
   fs.writeFileSync(thumbPath, svgPoster, 'utf8');
+
+  // Verify file write succeeded
+  if (!fs.existsSync(videoPath) || fs.statSync(videoPath).size < 1000) {
+    throw new Error(`Failed to persist synthesized video to disk at ${videoPath}`);
+  }
 
   return {
     success: true,

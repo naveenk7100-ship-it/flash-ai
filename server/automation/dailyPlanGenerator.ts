@@ -1,7 +1,5 @@
-import { contentPatternAnalyzer } from '../analytics/contentPatternAnalyzer.ts';
 import { contentRecommendationService } from '../analytics/contentRecommendationService.ts';
 import { fatigueDetector } from '../analytics/fatigueDetector.ts';
-import { experimentSystem } from '../analytics/experimentSystem.ts';
 import { automationSettingsManager } from './automationSettings.ts';
 import type {
   PlannedDailyItem,
@@ -20,9 +18,7 @@ export class DailyPlanGenerator {
     const settings = automationSettingsManager.getSettings();
     const count = customReelsCount || settings.reelsPerDay || 2;
 
-    const patterns = contentPatternAnalyzer.analyzePatterns();
     const recommendations = contentRecommendationService.getRecommendations();
-    const activeExperiments = experimentSystem.getAllExperiments().filter((e) => e.status === 'ACTIVE');
     const fatigue = fatigueDetector.scanForFatigue();
 
     const plannedItems: PlannedDailyItem[] = [];
@@ -56,75 +52,65 @@ export class DailyPlanGenerator {
 
     candidatePool.push(
       {
-        topic: 'How Local Clinics Use AI WhatsApp Agents to Handle 40+ Inquiries Nightly',
-        pillar: 'whatsapp-automation',
-        angle: 'Problem',
-        duration: '30s',
-        hookDirection: 'Numerical time-loss hook ("What happens when a clinic gets 40 inquiries at 11 PM?")',
-        cta: 'DM "AUTOMATE"',
-        reason: 'WhatsApp Automation Problem-angle demonstrates highest lead conversion rate (3.8x baseline).',
-        evidence: `Supported by N=${patterns.byPillar.find((p) => p.groupKey === 'whatsapp-automation')?.sampleSize || 2} observed posts and 78% CRM lead attribution.`
-      },
-      {
-        topic: '3 Fatal Mistakes Founders Make When Automating Client Onboarding',
-        pillar: 'ai-automation',
-        angle: 'Mistake',
-        duration: '30s',
-        hookDirection: 'Mistake callout ("Stop building complex bots before fixing this step...")',
-        cta: 'Book Strategy Call',
-        reason: 'Mistake Callouts generate 2.1x higher save-to-reach ratio from decision-maker audience.',
-        evidence: `Empirical save index: 24 saves/post in observed agency automation dataset.`
-      },
-      {
-        topic: 'Live Demo: Building a 24/7 AI Lead Qualifier in 60 Seconds',
-        pillar: 'lead-generation',
-        angle: 'Demo',
-        duration: '60s',
-        hookDirection: 'Behind-the-scenes live walkthrough ("Watch this AI qualify a ₹50,000 prospect...")',
-        cta: 'Comment "GROWTH"',
-        reason: 'Visual Demos provide empirical proof of capability, driving comment keyword engagement.',
-        evidence: `Demonstrates high engagement retention (average 7.8% engagement rate in historical tests).`
-      },
-      {
-        topic: 'Why Hiring an Extra Receptionist Costs 10x More Than an AI Booking System',
-        pillar: 'business-growth',
-        angle: 'Comparison',
-        duration: '30s',
-        hookDirection: 'ROI comparison hook ("₹35,000/month salary vs ₹2,000/month automated workflow")',
-        cta: 'Free AI Audit',
-        reason: 'Direct financial comparison hooks directly resolve price-to-value objections for SMB owners.',
-        evidence: `Cited audience question in Daily Intelligence Briefing.`
-      },
-      {
-        topic: 'Top 5 AI Tools That Run Our Entire Agency Backend in 2026',
+        topic: 'Everyday AI Productivity: Modern Workflows Without Code',
         pillar: 'ai-tools',
         angle: 'Tool discovery',
         duration: '30s',
-        hookDirection: 'Curated toolkit hook ("Here are the 5 tools replacing 20 hours of manual work...")',
-        cta: 'DM "AUTOMATE"',
-        reason: 'Tool discovery drives high organic bookmarking/saves for evergreen account reach.',
-        evidence: `Top CPI performer with 62/100 Composite Performance Index.`
+        hookDirection: 'AI tools are becoming much easier to use for everyday work.',
+        cta: 'Follow @flash_ai_digital',
+        reason: 'Analyzes the broader evolution of AI tools becoming accessible for everyday knowledge workers.',
+        evidence: 'Macro trend across document synthesis, data structuring, and visual interfaces.'
+      },
+      {
+        topic: 'Claude 3.7 Sonnet & Hybrid Reasoning: What Changes in Daily Use',
+        pillar: 'ai-news-update',
+        angle: 'Demo',
+        duration: '30s',
+        hookDirection: 'Hybrid reasoning lets models think deeply or respond instantly depending on complexity.',
+        cta: 'Save for Later',
+        reason: 'Model architecture breakdown showing real developer and analytical workflows.',
+        evidence: 'Official benchmark documentation and hybrid thinking architecture.'
+      },
+      {
+        topic: 'Cursor vs Windsurf vs GitHub Copilot: Modern AI Code Editing Compared',
+        pillar: 'ai-explainers',
+        angle: 'Comparison',
+        duration: '30s',
+        hookDirection: 'Here is how the top three AI code editors actually compare on multi-file changes.',
+        cta: 'Save for Later',
+        reason: 'Side-by-side technical comparison of agentic IDEs.',
+        evidence: 'Real benchmark comparisons on refactoring speed and context precision.'
+      },
+      {
+        topic: 'Building an Autonomous Research Pipeline with DeepSeek & Perplexity',
+        pillar: 'ai-automation',
+        angle: 'How-to',
+        duration: '30s',
+        hookDirection: 'How to chain deep research models to synthesize 50 papers into a structured report.',
+        cta: 'Try This AI Workflow',
+        reason: 'Step-by-step practical research workflow.',
+        evidence: 'Verified multi-model chaining methodology.'
+      },
+      {
+        topic: 'Local AI on Laptop: Running 8B Parameter Models Completely Offline',
+        pillar: 'practical-tutorials',
+        angle: 'Demo',
+        duration: '30s',
+        hookDirection: 'You can now run private, high-speed LLMs on your laptop with zero cloud costs.',
+        cta: 'Explore Curated AI Tools',
+        reason: 'Privacy-focused local AI setup demonstration.',
+        evidence: 'Ollama and llama.cpp local inference performance benchmarks.'
       }
     );
 
     // Select candidate items while enforcing diversity:
     // 1. Never pick the same pillar twice in the same daily plan
     // 2. Never pick the same angle twice in the same daily plan
-    // 3. Prioritize active experiment requirements if any exist
     const selectedPillars = new Set<string>();
     const selectedAngles = new Set<string>();
 
     for (const candidate of candidatePool) {
       if (plannedItems.length >= count) break;
-
-      // Check for active experiment variable alignment
-      let experimentNote = '';
-      if (activeExperiments.length > 0) {
-        const exp = activeExperiments[0];
-        if (exp.isolatedVariable === 'CTA' && candidate.cta === 'DM "AUTOMATE"') {
-          experimentNote = ` [Active Experiment: Testing "${exp.name}"]`;
-        }
-      }
 
       if (!selectedPillars.has(candidate.pillar) && !selectedAngles.has(candidate.angle)) {
         selectedPillars.add(candidate.pillar);
@@ -138,7 +124,7 @@ export class DailyPlanGenerator {
           duration: candidate.duration,
           hookDirection: candidate.hookDirection,
           cta: candidate.cta,
-          reason: `${candidate.reason}${experimentNote}`,
+          reason: candidate.reason,
           evidence: candidate.evidence,
           qcStatus: 'PENDING',
           approvalStatus: 'PENDING'
@@ -151,14 +137,14 @@ export class DailyPlanGenerator {
       const idx = plannedItems.length;
       plannedItems.push({
         id: `plan-item-${Date.now()}-${idx + 1}`,
-        topic: `AI Automation Breakdown for High-Volume Businesses (Part ${idx + 1})`,
-        pillar: 'ai-automation',
+        topic: `Practical AI Workflow Breakdown: Everyday Automation (Part ${idx + 1})`,
+        pillar: 'ai-tools',
         angle: 'How-to',
         duration: '30s',
-        hookDirection: 'Step-by-step actionable guide',
-        cta: 'DM "AUTOMATE"',
-        reason: 'Maintains foundational publishing cadence for core AI automation pillar.',
-        evidence: 'Baseline account publishing frequency.',
+        hookDirection: 'Step-by-step practical AI workflow guide',
+        cta: 'Follow @flash_ai_digital',
+        reason: 'Delivers high-value practical AI information.',
+        evidence: 'Verified AI tool documentation.',
         qcStatus: 'PENDING',
         approvalStatus: 'PENDING'
       });

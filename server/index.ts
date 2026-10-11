@@ -5,6 +5,7 @@ import { EnvConfig } from './config/env.ts';
 import { Logger } from './utils/logger.ts';
 import { createAiApiHandler } from './apiMiddleware.ts';
 import { persistentScheduler } from './automation/persistentScheduler.ts';
+import { dailyProductionScheduler } from './automation/dailyProductionScheduler.ts';
 
 const PORT = EnvConfig.port;
 const DIST_DIR = path.resolve(process.cwd(), 'dist');
@@ -99,9 +100,10 @@ export async function createProductionServer(): Promise<http.Server> {
 export async function startServer(): Promise<http.Server> {
   EnvConfig.printStartupReport();
 
-  // Initialize Persistent Background Scheduler
+  // Initialize Persistent Background Scheduler & Daily Production Loop
   try {
     await persistentScheduler.initialize();
+    dailyProductionScheduler.startSchedulerLoop();
   } catch (err: any) {
     Logger.error('Error during persistent scheduler startup', { component: 'Server' }, err);
   }
@@ -121,6 +123,7 @@ export async function startServer(): Promise<http.Server> {
 
     // Stop scheduler timers
     persistentScheduler.shutdown();
+    dailyProductionScheduler.stopSchedulerLoop();
 
     server.close(() => {
       Logger.info('HTTP server closed cleanly. Process exiting.', { component: 'Server' });
@@ -140,8 +143,14 @@ export async function startServer(): Promise<http.Server> {
   return server;
 }
 
-// Auto-start if executed directly via Node / tsx
-if (process.argv[1] && process.argv[1].endsWith('server/index.ts')) {
+const isDirectEntry = Boolean(
+  process.argv[1] &&
+  (process.argv[1].replace(/\\/g, '/').endsWith('server/index.ts') ||
+   process.argv[1].replace(/\\/g, '/').endsWith('server/index.js') ||
+   process.env.AUTO_START_SERVER === 'true')
+);
+
+if (isDirectEntry) {
   startServer().catch((err) => {
     Logger.error('Fatal error during server startup', { component: 'Server' }, err);
     process.exit(1);

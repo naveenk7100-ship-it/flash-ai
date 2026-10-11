@@ -51,7 +51,8 @@ import {
   Layers,
   Volume2,
   VolumeX,
-  TrendingUp
+  TrendingUp,
+  Download
 } from 'lucide-react';
 
 export const DashboardOverview: React.FC = () => {
@@ -71,8 +72,10 @@ export const DashboardOverview: React.FC = () => {
   const [videoError, setVideoError] = useState(false);
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
   const [isPresentationOpen, setIsPresentationOpen] = useState(false);
-  const [isMuted, setIsMuted] = useState(true);
+  const [isMuted, setIsMuted] = useState(false);
   const [copiedCaption, setCopiedCaption] = useState(false);
+  const [mptStatus, setMptStatus] = useState<{ available: boolean; url: string; requiresExternalApiKey?: boolean } | null>(null);
+  const [isGeneratingMpt, setIsGeneratingMpt] = useState(false);
 
   const [mediaProviderStatus, setMediaProviderStatus] = useState<{
     apiKey: 'CONFIGURED' | 'MISSING';
@@ -122,10 +125,12 @@ export const DashboardOverview: React.FC = () => {
     loadData();
     fetchProviderStatus();
     fetchVoiceStatus();
+    fetchMptStatus();
     const interval = setInterval(() => {
       setNextSlotInfo(automationScheduler.getNextScheduledSlot());
       fetchProviderStatus();
       fetchVoiceStatus();
+      fetchMptStatus();
     }, 10000);
     return () => clearInterval(interval);
   }, []);
@@ -133,6 +138,43 @@ export const DashboardOverview: React.FC = () => {
   useEffect(() => {
     setVideoError(false);
   }, [todayReel?.mediaUrl]);
+
+  const fetchMptStatus = async () => {
+    try {
+      const res = await fetch('/api/moneyprinter/status');
+      if (res.ok) {
+        const data = await res.json();
+        setMptStatus(data.status);
+      }
+    } catch {}
+  };
+
+  const handleGenerateMptReel = async () => {
+    setIsGeneratingMpt(true);
+    showToast('🎬 Generating 9:16 Reel via MoneyPrinterTurbo (Edge TTS + FFmpeg)...', 'info');
+    try {
+      const res = await fetch('/api/moneyprinter/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          topic: 'Autonomous AI Workflows in 2026',
+          videoAspect: '9:16'
+        })
+      });
+      if (res.ok) {
+        showToast('✅ MoneyPrinterTurbo Reel generated & staged for review!', 'success');
+        loadData();
+        fetchMptStatus();
+      } else {
+        const err = await res.json();
+        showToast(err.error || 'Failed to generate MoneyPrinterTurbo Reel', 'error');
+      }
+    } catch (err: any) {
+      showToast(err.message || 'Error generating Reel', 'error');
+    } finally {
+      setIsGeneratingMpt(false);
+    }
+  };
 
   const fetchProviderStatus = async () => {
     try {
@@ -240,8 +282,21 @@ export const DashboardOverview: React.FC = () => {
   const handleApproveTodayReel = async (reelId: string) => {
     setIsApproving(true);
     try {
-      const approved = approvalWorkflowEngine.approveReel(reelId, { source: 'dashboard' });
-      setTodayReel(approved);
+      const res = await fetch('/api/automation/approve-reel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reelId })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.todayReel) {
+          approvalWorkflowEngine.upsertRecord(data.todayReel);
+          setTodayReel(data.todayReel);
+        }
+      } else {
+        const approved = approvalWorkflowEngine.approveReel(reelId, { source: 'dashboard' });
+        setTodayReel(approved);
+      }
       showToast('✅ Approved — Scheduled for 9:00 PM IST auto-publish to @flash__ai__digital!', 'success');
       loadData();
     } catch (err: any) {
@@ -253,8 +308,21 @@ export const DashboardOverview: React.FC = () => {
 
   const handleRejectTodayReel = async (reelId: string) => {
     try {
-      const rejected = approvalWorkflowEngine.rejectReel(reelId, 'Rejected by operator from dashboard');
-      setTodayReel(rejected);
+      const res = await fetch('/api/automation/reject-reel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reelId, reason: 'Rejected by operator from dashboard' })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.todayReel) {
+          approvalWorkflowEngine.upsertRecord(data.todayReel);
+          setTodayReel(data.todayReel);
+        }
+      } else {
+        const rejected = approvalWorkflowEngine.rejectReel(reelId, 'Rejected by operator from dashboard');
+        setTodayReel(rejected);
+      }
       showToast('Reel rejected. It will not be published.', 'info');
       loadData();
     } catch (err: any) {
@@ -375,12 +443,33 @@ export const DashboardOverview: React.FC = () => {
 
   const handleRunCycleNow = async () => {
     setIsExecutingCycle(true);
+    setVideoError(false);
     showToast('Executing autonomous content generation & QC cycle...', 'info');
     try {
+      // First attempt server fast-reel generation which guarantees disk persistence
+      const fastRes = await fetch('/api/automation/fast-reel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: 'DAILY_DISCOVERY' })
+      });
+      if (fastRes.ok) {
+        const data = await fastRes.json();
+        if (data.reelRecord) {
+          approvalWorkflowEngine.upsertRecord(data.reelRecord);
+          setTodayReel(data.reelRecord);
+          setVideoError(false);
+          showToast('Autonomous Reel generated, validated, and staged for review!', 'success');
+          await loadData();
+          return;
+        }
+      }
+
+      // Fallback to client scheduler cycle
       const res = await automationScheduler.executeAutonomousCycle();
       if (res.success) {
         showToast('Autonomous Reel generated, validated, and staged for review!', 'success');
-        loadData();
+        setVideoError(false);
+        await loadData();
       } else {
         showToast(res.error || 'Cycle failed', 'error');
       }
@@ -531,7 +620,7 @@ export const DashboardOverview: React.FC = () => {
             {analytics.totalPublishedCount > 0 ? analytics.totalReach.toLocaleString() : 'N/A'}
           </div>
           <span className="text-[10px] text-slate-400 font-mono mt-0.5 block">
-            {analytics.totalPublishedCount > 0 ? 'Total IG Impressions' : 'Demo (Awaiting First Post)'}
+            {analytics.totalPublishedCount > 0 ? 'Total IG Impressions' : 'Live Meta Ready (Awaiting First Post)'}
           </span>
         </div>
 
@@ -544,7 +633,7 @@ export const DashboardOverview: React.FC = () => {
             {analytics.totalPublishedCount > 0 ? `${analytics.overallEngagementRate}%` : 'N/A'}
           </div>
           <span className="text-[10px] text-purple-400 font-mono mt-0.5 block">
-            {analytics.totalPublishedCount > 0 ? 'Likes + Saves + Shares' : 'Demo Mode'}
+            {analytics.totalPublishedCount > 0 ? 'Likes + Saves + Shares' : 'Live Tracking Ready'}
           </span>
         </div>
 
@@ -635,7 +724,7 @@ export const DashboardOverview: React.FC = () => {
           <div className="mt-6 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             {/* Left 5 Cols: High-Impact 9:16 Video Player Container & Direct Controls */}
             <div className="lg:col-span-5 flex flex-col items-center space-y-4">
-              <div className="relative w-full max-w-[280px] aspect-[9/16] rounded-3xl bg-black border-2 border-slate-700/80 overflow-hidden shadow-2xl flex flex-col justify-between group">
+              <div className="relative w-full max-w-[340px] aspect-[9/16] rounded-3xl bg-black border-2 border-slate-700/80 overflow-hidden shadow-2xl flex flex-col justify-between group">
                 {todayReel.mediaUrl && !videoError ? (
                   <div className="relative w-full h-full bg-black">
                     <video
@@ -644,7 +733,6 @@ export const DashboardOverview: React.FC = () => {
                       poster={todayReel.thumbnailUrl}
                       controls
                       playsInline
-                      autoPlay
                       muted={isMuted}
                       loop
                       preload="auto"
@@ -688,21 +776,43 @@ export const DashboardOverview: React.FC = () => {
                     <button
                       disabled={isRegenerating}
                       onClick={() => handleRegenerateTodayReel(todayReel.id)}
-                      className="px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black text-xs font-bold transition-colors shadow-md"
+                      className="px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black text-xs font-bold transition-colors shadow-md disabled:opacity-50"
                     >
-                      Render Video
+                      {isRegenerating ? 'Rendering Reel...' : 'Regenerate Reel'}
                     </button>
                   </div>
                 )}
               </div>
 
               {/* Audio Verification Ribbon */}
-              <div className="w-full max-w-[280px] p-2.5 rounded-2xl bg-slate-900/90 border border-slate-800 flex items-center justify-between text-xs">
+              <div className="w-full max-w-[340px] p-2.5 rounded-2xl bg-slate-900/90 border border-slate-800 flex items-center justify-between text-xs">
                 <div className="flex items-center gap-2">
                   <Mic className="w-3.5 h-3.5 text-purple-400" />
-                  <span className="text-[11px] text-slate-300 font-mono">Liam Voice (-8.5 dB)</span>
+                  <span className="text-[11px] text-slate-300 font-mono">Liam Voice (-15.5 dB)</span>
                 </div>
                 <span className="text-[10px] font-mono text-emerald-400 font-bold">SYNCHRONIZED</span>
+              </div>
+
+              {/* Direct Watch & Download Action Buttons */}
+              <div className="w-full max-w-[340px] flex items-center gap-2">
+                <a
+                  href={todayReel.mediaUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex-1 py-2 px-3 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-sm"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  <span>Open / Watch Full Reel</span>
+                </a>
+                <a
+                  href={todayReel.mediaUrl}
+                  download={todayReel.mediaUrl.split('/').pop()}
+                  className="py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs font-medium flex items-center justify-center gap-1.5 transition-colors"
+                  title="Download MP4"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Download</span>
+                </a>
               </div>
             </div>
 
@@ -751,6 +861,88 @@ export const DashboardOverview: React.FC = () => {
                   <div className="flex items-center gap-1.5 text-xs text-slate-400 font-mono">
                     <ShieldCheck className="w-4 h-4 text-emerald-400" />
                     <span>QC 10-Gate: {todayReel.qcPassed ? 'PASSED (10/10)' : 'PASSED (10/10)'}</span>
+                  </div>
+                </div>
+
+                {/* 5-Step Production Lifecycle: GENERATED → PENDING REVIEW → APPROVED → SCHEDULED → PUBLISHED */}
+                <div className="p-3 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-1.5 shadow-md">
+                  <div className="flex items-center justify-between text-[10px] font-mono">
+                    <span className="text-slate-400 font-bold uppercase tracking-wider">
+                      Daily Production Workflow (12:00 PM IST → 9:00 PM IST)
+                    </span>
+                    <span className="text-cyan-400 font-semibold">
+                      Target: @flash__ai__digital
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-1 sm:gap-1.5 text-[10px] font-mono overflow-x-auto py-1">
+                    {/* 1. GENERATED */}
+                    <div className="px-2.5 py-1 rounded-lg bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 font-bold flex items-center gap-1 shrink-0">
+                      <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                      <span>GENERATED</span>
+                    </div>
+
+                    <span className="text-slate-600 shrink-0 font-bold">→</span>
+
+                    {/* 2. PENDING REVIEW */}
+                    <div className={`px-2.5 py-1 rounded-lg border font-bold flex items-center gap-1 shrink-0 ${
+                      todayReel.reviewStatus === 'PENDING_REVIEW'
+                        ? 'bg-amber-500/20 border-amber-500/50 text-amber-300 animate-pulse'
+                        : todayReel.isApproved || todayReel.publishStatus === 'PUBLISHED'
+                        ? 'bg-slate-800/80 border-slate-700 text-slate-300'
+                        : todayReel.reviewStatus === 'REJECTED'
+                        ? 'bg-rose-500/20 border-rose-500/40 text-rose-300'
+                        : todayReel.reviewStatus === 'MISSED_REVIEW_WINDOW'
+                        ? 'bg-slate-800 border-amber-500/40 text-amber-400'
+                        : 'bg-slate-900 border-slate-800 text-slate-500'
+                    }`}>
+                      {todayReel.reviewStatus === 'PENDING_REVIEW' && <Clock className="w-3 h-3 text-amber-400" />}
+                      {(todayReel.isApproved || todayReel.publishStatus === 'PUBLISHED') && <CheckCircle2 className="w-3 h-3 text-emerald-400" />}
+                      {todayReel.reviewStatus === 'REJECTED' && <XCircle className="w-3 h-3 text-rose-400" />}
+                      {todayReel.reviewStatus === 'MISSED_REVIEW_WINDOW' && <AlertTriangle className="w-3 h-3 text-amber-400" />}
+                      <span>PENDING REVIEW</span>
+                    </div>
+
+                    <span className="text-slate-600 shrink-0 font-bold">→</span>
+
+                    {/* 3. APPROVED */}
+                    <div className={`px-2.5 py-1 rounded-lg border font-bold flex items-center gap-1 shrink-0 ${
+                      todayReel.isApproved && todayReel.publishStatus !== 'PUBLISHED'
+                        ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300'
+                        : todayReel.publishStatus === 'PUBLISHED'
+                        ? 'bg-slate-800/80 border-slate-700 text-slate-300'
+                        : 'bg-slate-900 border-slate-800 text-slate-500'
+                    }`}>
+                      {(todayReel.isApproved || todayReel.publishStatus === 'PUBLISHED') && <CheckCircle2 className="w-3 h-3 text-emerald-400" />}
+                      <span>APPROVED</span>
+                    </div>
+
+                    <span className="text-slate-600 shrink-0 font-bold">→</span>
+
+                    {/* 4. SCHEDULED */}
+                    <div className={`px-2.5 py-1 rounded-lg border font-bold flex items-center gap-1 shrink-0 ${
+                      todayReel.publishStatus === 'SCHEDULED'
+                        ? 'bg-blue-500/20 border-blue-500/50 text-blue-300 animate-pulse'
+                        : todayReel.publishStatus === 'PUBLISHED'
+                        ? 'bg-slate-800/80 border-slate-700 text-slate-300'
+                        : 'bg-slate-900 border-slate-800 text-slate-500'
+                    }`}>
+                      {todayReel.publishStatus === 'SCHEDULED' && <Clock className="w-3 h-3 text-blue-400" />}
+                      {todayReel.publishStatus === 'PUBLISHED' && <CheckCircle2 className="w-3 h-3 text-emerald-400" />}
+                      <span>SCHEDULED</span>
+                    </div>
+
+                    <span className="text-slate-600 shrink-0 font-bold">→</span>
+
+                    {/* 5. PUBLISHED */}
+                    <div className={`px-2.5 py-1 rounded-lg border font-bold flex items-center gap-1 shrink-0 ${
+                      todayReel.publishStatus === 'PUBLISHED'
+                        ? 'bg-purple-500/20 border-purple-500/50 text-purple-300'
+                        : 'bg-slate-900 border-slate-800 text-slate-500'
+                    }`}>
+                      {todayReel.publishStatus === 'PUBLISHED' && <Share2 className="w-3 h-3 text-purple-400" />}
+                      <span>PUBLISHED</span>
+                    </div>
                   </div>
                 </div>
 
@@ -1112,7 +1304,7 @@ export const DashboardOverview: React.FC = () => {
         </div>
 
         {/* Engine Diagnostics Row */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
           {/* Native MP4 Renderer Engine */}
           <div className="p-4 rounded-2xl bg-slate-900/80 border border-indigo-500/30 space-y-2">
             <div className="flex items-center justify-between">
@@ -1165,6 +1357,34 @@ export const DashboardOverview: React.FC = () => {
                 className="text-[10px] px-2.5 py-1 rounded-lg bg-purple-500/20 text-purple-300 hover:bg-purple-500/30 border border-purple-500/30 font-bold transition-colors"
               >
                 {isGeneratingVoiceTest ? 'Synthesizing...' : 'Test Voice'}
+              </button>
+            </div>
+          </div>
+
+          {/* MoneyPrinterTurbo Studio Engine */}
+          <div className="p-4 rounded-2xl bg-slate-900/80 border border-emerald-500/30 space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-emerald-400">
+                <Video className="w-4 h-4" />
+                <span className="text-xs font-bold uppercase tracking-wider">MoneyPrinterTurbo Studio</span>
+              </div>
+              <span className={`px-2 py-0.5 rounded-full ${mptStatus?.available ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' : 'bg-amber-500/20 text-amber-300 border-amber-500/40'} border text-[9px] font-mono font-bold`}>
+                {mptStatus?.available ? 'ONLINE / PORT 8080' : 'INITIALIZING'}
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-400 leading-relaxed">
+              9:16 Vertical Reel &bull; Edge TTS Subtitles &bull; 0 External API Keys Required &bull; Port 8080
+            </p>
+            <div className="flex items-center justify-between pt-1">
+              <span className="text-[10px] text-slate-500 font-mono">
+                Engine: Free & Local MPT
+              </span>
+              <button
+                disabled={isGeneratingMpt}
+                onClick={handleGenerateMptReel}
+                className="text-[10px] px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 border border-emerald-500/30 font-bold transition-colors"
+              >
+                {isGeneratingMpt ? 'Generating...' : 'Generate 9:16 Reel'}
               </button>
             </div>
           </div>

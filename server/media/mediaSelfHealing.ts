@@ -153,6 +153,7 @@ export class MediaSelfHealingService {
           fs.renameSync(tempPath, finalVideoPath);
 
           record.mediaUrl = `/media/renders/${finalVideoFilename}`;
+          record.mediaPath = finalVideoPath;
           record.durationSeconds = duration;
           record.qcPassed = true;
           modified = true;

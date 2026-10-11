@@ -155,6 +155,16 @@ export class ApprovalWorkflowEngine {
             inMemoryFallbackStore.set(r.id, r);
           });
         }
+        if (typeof window !== 'undefined') {
+          fetch('/api/automation/review-records')
+            .then((r) => r.json())
+            .then((data) => {
+              if (data && Array.isArray(data.records)) {
+                this.syncWithBackend(data.records);
+              }
+            })
+            .catch(() => {});
+        }
       } catch {
         // Storage fallback
       }
@@ -192,8 +202,14 @@ export class ApprovalWorkflowEngine {
     if (!Array.isArray(records)) return;
     records.forEach((r) => {
       this.records.set(r.id, r);
+      inMemoryFallbackStore.set(r.id, r);
     });
-    this.saveToStorage();
+    if (typeof localStorage !== 'undefined') {
+      try {
+        const list = Array.from(this.records.values());
+        localStorage.setItem(REVIEW_RECORDS_STORAGE_KEY, JSON.stringify(list));
+      } catch {}
+    }
   }
 
   /**
@@ -214,30 +230,6 @@ export class ApprovalWorkflowEngine {
           record.mediaUrl = synth.outputVideoUrl;
           record.thumbnailUrl = synth.thumbnailUrl;
         }
-      } else {
-        // If running in Node, check if physical file is missing before synthesizing
-        if (typeof window === 'undefined') {
-          try {
-            const proc = (globalThis as any).process;
-            if (proc && typeof proc.getBuiltinModule === 'function') {
-              const fs = proc.getBuiltinModule('node:fs');
-              const path = proc.getBuiltinModule('node:path');
-              if (fs && path) {
-                const relative = decodeURIComponent(record.mediaUrl.replace(/^\/media\//, ''));
-                const absPath = path.resolve(proc.cwd(), 'media', relative);
-                if (!fs.existsSync(absPath)) {
-                  synthesizeAndStoreReelVideo({
-                    projectId: record.projectId || record.id,
-                    title: record.title,
-                    topic: record.topic,
-                    formatName: record.formatName,
-                    durationSeconds: record.durationSeconds || 5
-                  });
-                }
-              }
-            }
-          } catch {}
-        }
       }
     }
   }
@@ -246,10 +238,18 @@ export class ApprovalWorkflowEngine {
     inMemoryFallbackStore.clear();
     this.records.forEach((val, key) => inMemoryFallbackStore.set(key, val));
 
+    const list = Array.from(this.records.values());
+
     if (typeof localStorage !== 'undefined') {
       try {
-        const list = Array.from(this.records.values());
         localStorage.setItem(REVIEW_RECORDS_STORAGE_KEY, JSON.stringify(list));
+        if (typeof window !== 'undefined' && list.length > 0) {
+          fetch('/api/automation/record/upsert', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ records: list })
+          }).catch(() => {});
+        }
       } catch {
         // Storage fallback
       }
@@ -264,7 +264,6 @@ export class ApprovalWorkflowEngine {
           if (!fs.existsSync(dir)) {
             fs.mkdirSync(dir, { recursive: true });
           }
-          const list = Array.from(this.records.values());
           fs.writeFileSync(filePath, JSON.stringify(list, null, 2), 'utf8');
         } catch {}
       }

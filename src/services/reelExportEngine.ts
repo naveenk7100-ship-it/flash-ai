@@ -18,7 +18,10 @@ import type {
   ReelExportSettings
 } from '../types/reelProduction';
 
-import { synthesizeAndStoreReelVideo } from './videoSynthesizerService';
+import {
+  ensureReelVideoPersistedAsync,
+  getStandardReelFilenames
+} from './videoSynthesizerService';
 
 const EXPORT_HISTORY_KEY = 'flash_ai_reel_export_history';
 
@@ -75,12 +78,13 @@ export class ReelExportEngine {
     update('ENCODING', 75, `Encoding ${exportSettings.format.toUpperCase()} video (${exportSettings.fps} FPS, ${exportSettings.quality} quality)...`);
 
     // Perform actual rendering and persistent storage
-    let videoUrl = `/media/renders/reel_${project.id.replace(/[^a-zA-Z0-9_-]/g, '_')}.mp4`;
-    let thumbnailUrl = `/media/thumbnails/thumb_${project.id.replace(/[^a-zA-Z0-9_-]/g, '_')}.svg`;
+    const { videoFilename, thumbFilename } = getStandardReelFilenames(project.id);
+    let videoUrl = `/media/renders/${videoFilename}`;
+    let thumbnailUrl = `/media/thumbnails/${thumbFilename}`;
     let fileSizeBytes = 1024 * 1024 * 3.5;
 
     try {
-      const synthesized = synthesizeAndStoreReelVideo({
+      const synthesized = await ensureReelVideoPersistedAsync({
         projectId: project.id,
         title: project.title,
         topic: project.topic,
