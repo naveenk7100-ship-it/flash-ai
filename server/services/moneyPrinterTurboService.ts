@@ -16,6 +16,7 @@ import path from 'node:path';
 import { MEDIA_DIRS } from '../media/storagePaths.ts';
 import { MediaValidator, type Mp4StreamReport } from '../media/mediaValidator.ts';
 import { Logger } from '../utils/logger.ts';
+import { cloudStorageManager } from '../storage/cloudStorageManager.ts';
 
 export interface MoneyPrinterStatus {
   available: boolean;
@@ -293,7 +294,7 @@ export class MoneyPrinterTurboService {
     const caption = `⚡ ${topic}\n\n${script}\n\n${hashtags.join(' ')}`;
     const hook = script.split('.')[0] || topic;
 
-    const reviewRecord = {
+    const reviewRecord: any = {
       id: reviewRecordId,
       reelId,
       projectId: `proj-mpt-${cleanId}`,
@@ -333,6 +334,18 @@ export class MoneyPrinterTurboService {
 
     // Upsert into data/storage/review_records.json
     this.upsertReviewRecord(reviewRecord);
+
+    if (cloudStorageManager.isEnabled()) {
+      cloudStorageManager.uploadVideoFile(targetFilePath, path.basename(targetFilePath))
+        .then((res) => {
+          if (res.success && res.cloudUrl) {
+            reviewRecord.cloudUrl = res.cloudUrl;
+            this.upsertReviewRecord(reviewRecord);
+            cloudStorageManager.syncStateToCloud().catch(() => {});
+          }
+        })
+        .catch(() => {});
+    }
 
     Logger.info(`[MoneyPrinterTurbo] Successfully staged Reel ${reviewRecordId} for in-app review: ${relativeMediaUrl}`, { component: 'Media' });
 

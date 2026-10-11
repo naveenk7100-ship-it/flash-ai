@@ -36,6 +36,7 @@ import { mediaSelfHealingService } from './media/mediaSelfHealing.ts';
 import { dailyProductionScheduler } from './automation/dailyProductionScheduler.ts';
 import { trendDiscoveryEngine } from './trends/trendDiscoveryEngine.ts';
 import { moneyPrinterTurboService } from './services/moneyPrinterTurboService.ts';
+import { cloudStorageManager } from './storage/cloudStorageManager.ts';
 
 // Server start time for uptime tracking
 const SERVER_START_TIME = Date.now();
@@ -59,6 +60,8 @@ export function createAiApiHandler() {
   // Eagerly initialize persistent scheduler and daily production loop in background
   if (!schedulerInitPromise) {
     schedulerInitPromise = (async () => {
+      // Hydrate state from cloud storage if running on ephemeral cloud container
+      await cloudStorageManager.hydrateStateFromCloud().catch(() => {});
       await persistentScheduler.initialize();
       dailyProductionScheduler.startSchedulerLoop();
     })().catch((err) => {
@@ -119,11 +122,48 @@ export function createAiApiHandler() {
         return;
       }
 
-      // Check physical file existence (do NOT generate fake placeholders)
-      if (!fs.existsSync(safePath) || fs.statSync(safePath).isDirectory()) {
+      // Check physical file existence (with Cloud Storage fallback for ephemeral containers)
+      if (!fs.existsSync(safePath)) {
+        if (cloudStorageManager.isEnabled()) {
+          const cloudStream = await cloudStorageManager.streamFromCloud(relativePath, req.headers.range);
+          if (cloudStream) {
+            res.statusCode = cloudStream.statusCode;
+            res.setHeader('Accept-Ranges', 'bytes');
+            res.setHeader('Access-Control-Allow-Origin', '*');
+            res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+            res.setHeader('Content-Type', cloudStream.contentType);
+            res.setHeader('Content-Length', cloudStream.contentLength);
+            if (cloudStream.contentRange) {
+              res.setHeader('Content-Range', cloudStream.contentRange);
+            }
+
+            if (req.method === 'HEAD') {
+              res.end();
+              return;
+            }
+
+            if (typeof cloudStream.stream?.pipe === 'function') {
+              cloudStream.stream.pipe(res);
+            } else if (cloudStream.stream) {
+              const { Readable } = await import('node:stream');
+              Readable.from(cloudStream.stream).pipe(res);
+            } else {
+              res.end();
+            }
+            return;
+          }
+        }
+
         res.statusCode = 404;
         res.setHeader('Content-Type', 'application/json');
-        res.end(JSON.stringify({ error: `Media file not found on disk: ${relativePath}`, success: false }));
+        res.end(JSON.stringify({ error: `Media file not found: ${relativePath}`, success: false }));
+        return;
+      }
+
+      if (fs.statSync(safePath).isDirectory()) {
+        res.statusCode = 404;
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify({ error: `Access denied: target is a directory`, success: false }));
         return;
       }
 
@@ -318,7 +358,8 @@ export function createAiApiHandler() {
             storage: storageWritable ? 'healthy' : 'unwritable',
             scheduler: isSchedulerReady ? 'running' : 'initializing',
             moneyPrinterTurbo: (mptStatus as any).available ? 'connected' : 'offline',
-            metaConfigured: serverMetaService.isConfigured()
+            metaConfigured: serverMetaService.isConfigured(),
+            cloudStorage: cloudStorageManager.isEnabled() ? 'connected' : 'local-only'
           }
         })
       );
