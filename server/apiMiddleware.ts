@@ -317,8 +317,12 @@ export function createAiApiHandler() {
     // ==========================================
     // 1b. HEALTH AND READINESS PROBES
     // ==========================================
-    if (url === '/api/health' && req.method === 'GET') {
+    if (url === '/api/health' && (req.method === 'GET' || req.method === 'HEAD')) {
       res.statusCode = 200;
+      if (req.method === 'HEAD') {
+        res.end();
+        return;
+      }
       res.end(
         JSON.stringify({
           status: 'ok',
@@ -331,7 +335,7 @@ export function createAiApiHandler() {
       return;
     }
 
-    if (url === '/api/ready' && req.method === 'GET') {
+    if (url === '/api/ready' && (req.method === 'GET' || req.method === 'HEAD')) {
       const isSchedulerReady = persistentScheduler.isReady();
       const storageDir = path.resolve(process.cwd(), 'data', 'storage');
       let storageWritable = false;
@@ -349,6 +353,10 @@ export function createAiApiHandler() {
       const isReady = storageWritable;
 
       res.statusCode = isReady ? 200 : 503;
+      if (req.method === 'HEAD') {
+        res.end();
+        return;
+      }
       res.end(
         JSON.stringify({
           ready: isReady,
