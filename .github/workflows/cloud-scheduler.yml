@@ -1,0 +1,77 @@
+name: FLASH.Ai Autonomous Cloud Scheduler & Keep-Alive
+
+on:
+  schedule:
+    # 1. Keep-alive ping every 14 minutes (prevents Render Free container from sleeping)
+    - cron: '*/14 * * * *'
+    # 2. Daily Reel Generation Slot at 12:00 PM IST (06:30 UTC)
+    - cron: '30 6 * * *'
+    # 3. Daily Reel Publish Slot at 9:00 PM IST (15:30 UTC)
+    - cron: '30 15 * * *'
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Action to trigger'
+        required: true
+        default: 'health-check'
+        type: choice
+        options:
+          - health-check
+          - generate-reel
+          - trigger-publish
+
+jobs:
+  scheduler-tick:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Determine Target Action
+        id: action-selector
+        run: |
+          HOUR=$(date -u +%H)
+          MIN=$(date -u +%M)
+          MANUAL_ACTION="${{ github.event.inputs.action }}"
+
+          if [ -n "$MANUAL_ACTION" ]; then
+            echo "action=$MANUAL_ACTION" >> $GITHUB_OUTPUT
+          elif [ "$HOUR" = "06" ] && [ "$MIN" -ge "25" ] && [ "$MIN" -le "35" ]; then
+            echo "action=generate-reel" >> $GITHUB_OUTPUT
+          elif [ "$HOUR" = "15" ] && [ "$MIN" -ge "25" ] && [ "$MIN" -le "35" ]; then
+            echo "action=trigger-publish" >> $GITHUB_OUTPUT
+          else
+            echo "action=health-check" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Execute Action Against Cloud Backend
+        env:
+          BACKEND_URL: ${{ secrets.BACKEND_URL || 'https://default-penholder-goes.ngrok-free.dev' }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          ACTION="${{ steps.action-selector.outputs.action }}"
+          echo "Executing action: $ACTION against $BACKEND_URL"
+
+          case "$ACTION" in
+            "health-check")
+              echo "Pinging health probe..."
+              HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$BACKEND_URL/api/health")
+              echo "Health response: $HTTP_CODE"
+              if [ "$HTTP_CODE" -ne 200 ]; then
+                echo "Warning: Backend returned HTTP $HTTP_CODE"
+              fi
+              ;;
+
+            "generate-reel")
+              echo "Triggering 12:00 PM IST Autonomous Generation Slot..."
+              curl -s -X POST "$BACKEND_URL/api/production/run-autonomous-generation" \
+                -H "Content-Type: application/json" \
+                -H "Authorization: Bearer $CRON_SECRET" \
+                -d '{"source": "github-actions-cloud-cron"}'
+              ;;
+
+            "trigger-publish")
+              echo "Triggering 9:00 PM IST Daily Publish Slot..."
+              curl -s -X POST "$BACKEND_URL/api/automation/daily-schedule/trigger-publish" \
+                -H "Content-Type: application/json" \
+                -H "Authorization: Bearer $CRON_SECRET" \
+                -d '{"dryRun": false, "source": "github-actions-cloud-cron"}'
+              ;;
+          esac

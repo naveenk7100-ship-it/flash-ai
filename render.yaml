@@ -1,0 +1,78 @@
+services:
+  # ==============================================================================
+  # 1. FLASH.Ai Persistent Node.js Backend & API Server
+  # ==============================================================================
+  - type: web
+    name: flash-ai-backend
+    runtime: node
+    plan: free
+    region: oregon
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: TZ
+        value: Asia/Kolkata
+      # Hard Safety Locks
+      - key: REQUIRE_HUMAN_APPROVAL
+        value: "true"
+      - key: AUTO_PUBLISH
+        value: "false"
+      # Meta Graph API Integration
+      - key: META_PUBLISHING_MODE
+        value: LIVE
+      - key: META_API_VERSION
+        value: v21.0
+      - key: META_INSTAGRAM_ACCOUNT_ID
+        sync: false
+      - key: META_ACCESS_TOKEN
+        sync: false
+      - key: META_WEBHOOK_VERIFY_TOKEN
+        sync: false
+      # AI & Voice Providers
+      - key: ELEVENLABS_API_KEY
+        sync: false
+      - key: ELEVENLABS_VOICE_ID
+        value: TX3LPaxmHKxFdv7VOQHJ
+      - key: ELEVENLABS_ENABLED
+        value: "true"
+      - key: GEMINI_API_KEY
+        sync: false
+      # External S3-Compatible Cloud Storage (Cloudflare R2 / Supabase / B2 / AWS)
+      # Solves Render Free ephemeral disk wipe on restart
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_ENDPOINT
+        sync: false
+      - key: S3_ACCESS_KEY_ID
+        sync: false
+      - key: S3_SECRET_ACCESS_KEY
+        sync: false
+      - key: S3_REGION
+        value: auto
+      - key: S3_PUBLIC_BASE_URL
+        sync: false
+      # Worker connection (points to private service or external MPT container)
+      - key: MONEYPRINTER_URL
+        value: http://flash-ai-mpt:8080
+
+  # ==============================================================================
+  # 2. MoneyPrinterTurbo Standalone Python Video Rendering Worker
+  # ==============================================================================
+  - type: web
+    name: flash-ai-mpt
+    runtime: docker
+    dockerfilePath: ./services/moneyprinterturbo/Dockerfile.production
+    dockerContext: ./services/moneyprinterturbo
+    plan: free
+    region: oregon
+    healthCheckPath: /
+    autoDeploy: true
+    envVars:
+      - key: PORT
+        value: 8080
