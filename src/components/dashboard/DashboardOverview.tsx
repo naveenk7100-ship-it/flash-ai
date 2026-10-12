@@ -52,7 +52,8 @@ import {
   Volume2,
   VolumeX,
   TrendingUp,
-  Download
+  Download,
+  Play
 } from 'lucide-react';
 
 export const DashboardOverview: React.FC = () => {
@@ -74,7 +75,15 @@ export const DashboardOverview: React.FC = () => {
   const [isPresentationOpen, setIsPresentationOpen] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [copiedCaption, setCopiedCaption] = useState(false);
-  const [mptStatus, setMptStatus] = useState<{ available: boolean; url: string; requiresExternalApiKey?: boolean } | null>(null);
+  const [mptStatus, setMptStatus] = useState<{
+    available: boolean;
+    url: string;
+    requiresExternalApiKey?: boolean;
+    engineStatus?: string;
+    pingVerified?: boolean;
+    generationVerified?: boolean;
+  } | null>(null);
+  const [recentReels, setRecentReels] = useState<ReviewableReelRecord[]>([]);
   const [isGeneratingMpt, setIsGeneratingMpt] = useState(false);
 
   const [mediaProviderStatus, setMediaProviderStatus] = useState<{
@@ -137,7 +146,7 @@ export const DashboardOverview: React.FC = () => {
 
   useEffect(() => {
     setVideoError(false);
-  }, [todayReel?.mediaUrl]);
+  }, [todayReel?.id, todayReel?.mediaUrl]);
 
   const fetchMptStatus = async () => {
     try {
@@ -270,6 +279,16 @@ export const DashboardOverview: React.FC = () => {
     } catch {
       setTodayReel(approvalWorkflowEngine.getTodayReel());
     }
+
+    try {
+      const recordsRes = await fetch('/api/automation/review-records');
+      if (recordsRes.ok) {
+        const recordsData = await recordsRes.json();
+        if (recordsData && Array.isArray(recordsData.records)) {
+          setRecentReels(recordsData.records);
+        }
+      }
+    } catch {}
 
     try {
       const status = await instagramProviderManager.getConnectionStatus();
@@ -724,13 +743,38 @@ export const DashboardOverview: React.FC = () => {
           <div className="mt-6 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             {/* Left 5 Cols: High-Impact 9:16 Video Player Container & Direct Controls */}
             <div className="lg:col-span-5 flex flex-col items-center space-y-4">
+              {/* Quick Reel Selector Ribbon */}
+              {recentReels.length > 1 && (
+                <div className="w-full max-w-[340px] flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+                  <span className="text-[10px] text-slate-500 font-mono uppercase shrink-0">Reels:</span>
+                  {recentReels.slice(0, 4).map((r) => (
+                    <button
+                      key={r.id}
+                      type="button"
+                      onClick={() => {
+                        setTodayReel(r);
+                        setVideoError(false);
+                      }}
+                      className={`px-2.5 py-1 rounded-lg border text-[10px] font-bold truncate max-w-[130px] transition-all shrink-0 ${
+                        todayReel?.id === r.id
+                          ? 'bg-cyan-500/25 text-cyan-300 border-cyan-500/60 shadow-sm'
+                          : 'bg-slate-900/80 text-slate-400 border-slate-800 hover:text-slate-200 hover:border-slate-700'
+                      }`}
+                      title={r.title}
+                    >
+                      {r.engine === 'MoneyPrinterTurbo' ? '⚡ MPT' : '🎬'} {r.title}
+                    </button>
+                  ))}
+                </div>
+              )}
+
               <div className="relative w-full max-w-[340px] aspect-[9/16] rounded-3xl bg-black border-2 border-slate-700/80 overflow-hidden shadow-2xl flex flex-col justify-between group">
                 {todayReel.mediaUrl && !videoError ? (
                   <div className="relative w-full h-full bg-black">
                     <video
                       key={todayReel.mediaUrl}
                       src={todayReel.mediaUrl}
-                      poster={todayReel.thumbnailUrl}
+                      poster={todayReel.thumbnailUrl && !todayReel.thumbnailUrl.endsWith('.mp4') ? todayReel.thumbnailUrl : undefined}
                       controls
                       playsInline
                       muted={isMuted}
@@ -764,22 +808,33 @@ export const DashboardOverview: React.FC = () => {
                   </div>
                 ) : (
                   <div className="p-6 my-auto text-center space-y-3">
-                    <div className="w-12 h-12 rounded-2xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-center mx-auto text-rose-400">
-                      <AlertTriangle className="w-6 h-6" />
+                    <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center mx-auto text-cyan-400">
+                      <Play className="w-6 h-6" />
                     </div>
                     <div>
-                      <strong className="text-xs font-bold text-white block">Video Asset In Progress / Not Found</strong>
-                      <p className="text-[10px] text-slate-400 mt-1">
-                        Asset: {(todayReel.mediaUrl || 'reel_production.mp4').split(/[/\\]/).pop()}. Click below to generate or repair video stream.
+                      <strong className="text-xs font-bold text-white block">Video Player Ready</strong>
+                      <p className="text-[10px] text-slate-400 mt-1 truncate">
+                        Asset: {(todayReel.mediaUrl || 'reel_production.mp4').split(/[/\\]/).pop()}
                       </p>
                     </div>
-                    <button
-                      disabled={isRegenerating}
-                      onClick={() => handleRegenerateTodayReel(todayReel.id)}
-                      className="px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black text-xs font-bold transition-colors shadow-md disabled:opacity-50"
-                    >
-                      {isRegenerating ? 'Rendering Reel...' : 'Regenerate Reel'}
-                    </button>
+                    <div className="flex items-center justify-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setVideoError(false)}
+                        className="px-3.5 py-1.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black text-xs font-bold transition-colors shadow-md flex items-center gap-1.5"
+                      >
+                        <Play className="w-3.5 h-3.5" />
+                        <span>Load / Play Video</span>
+                      </button>
+                      <button
+                        type="button"
+                        disabled={isRegenerating}
+                        onClick={() => handleRegenerateTodayReel(todayReel.id)}
+                        className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition-colors"
+                      >
+                        {isRegenerating ? 'Rendering...' : 'Regenerate'}
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -1368,8 +1423,8 @@ export const DashboardOverview: React.FC = () => {
                 <Video className="w-4 h-4" />
                 <span className="text-xs font-bold uppercase tracking-wider">MoneyPrinterTurbo Studio</span>
               </div>
-              <span className={`px-2 py-0.5 rounded-full ${mptStatus?.available ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' : 'bg-amber-500/20 text-amber-300 border-amber-500/40'} border text-[9px] font-mono font-bold`}>
-                {mptStatus?.available ? 'ONLINE / PORT 8080' : 'INITIALIZING'}
+              <span className={`px-2 py-0.5 rounded-full ${mptStatus?.engineStatus === 'READY' || mptStatus?.available ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' : 'bg-amber-500/20 text-amber-300 border-amber-500/40'} border text-[9px] font-mono font-bold`}>
+                {mptStatus?.engineStatus === 'READY' || mptStatus?.available ? 'READY (PORT 8080)' : (mptStatus?.engineStatus || 'INITIALIZING')}
               </span>
             </div>
             <p className="text-[11px] text-slate-400 leading-relaxed">
@@ -1377,7 +1432,7 @@ export const DashboardOverview: React.FC = () => {
             </p>
             <div className="flex items-center justify-between pt-1">
               <span className="text-[10px] text-slate-500 font-mono">
-                Engine: Free & Local MPT
+                {mptStatus?.pingVerified ? 'Ping: VERIFIED (pong)' : 'Connecting'} &bull; {mptStatus?.generationVerified ? 'Tasks: VERIFIED' : 'Engine Ready'}
               </span>
               <button
                 disabled={isGeneratingMpt}

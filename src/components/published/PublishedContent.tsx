@@ -37,10 +37,13 @@ export const PublishedContent: React.FC = () => {
     }
   };
 
-  // Combine local items marked as PUBLISHED and publishingJobs
-  const publishedContentItems = contentItems.filter((item) => item.status === 'PUBLISHED');
+  // Filter out any mock test fixtures from local published reels
+  const genuineLocalPublishedReels = localPublishedReels.filter(
+    (reel) => !reel.id?.startsWith('test-')
+  );
 
-  const totalCount = publishedContentItems.length + liveMetaMedia.length + localPublishedReels.length;
+  const publishedContentItems = contentItems.filter((item) => item.status === 'PUBLISHED');
+  const totalCount = publishedContentItems.length + liveMetaMedia.length + genuineLocalPublishedReels.length;
 
   return (
     <div className="space-y-6 pb-20 lg:pb-8 animate-in fade-in duration-300 max-w-6xl mx-auto">
@@ -139,7 +142,7 @@ export const PublishedContent: React.FC = () => {
       )}
 
       {/* Local Published Records Section */}
-      {localPublishedReels.length > 0 && (
+      {genuineLocalPublishedReels.length > 0 && (
         <div className="space-y-3">
           <h2 className="text-sm font-bold text-slate-200 uppercase tracking-wider flex items-center gap-2">
             <Film className="w-4 h-4 text-purple-400" />
@@ -147,7 +150,7 @@ export const PublishedContent: React.FC = () => {
           </h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {localPublishedReels.map((reel) => (
+            {genuineLocalPublishedReels.map((reel) => (
               <div
                 key={reel.id}
                 className="p-4 rounded-2xl bg-slate-900/90 border border-purple-500/30 hover:border-purple-500/50 transition-all flex flex-col justify-between space-y-3"

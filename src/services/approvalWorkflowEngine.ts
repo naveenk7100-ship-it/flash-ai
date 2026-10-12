@@ -96,6 +96,7 @@ export interface ReviewableReelRecord {
   }>;
   publishedAt?: string;
   isDemo: boolean;
+  engine?: string;
 }
 
 const REVIEW_RECORDS_STORAGE_KEY = 'flash_ai_reviewable_reel_records';

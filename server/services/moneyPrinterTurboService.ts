@@ -29,6 +29,11 @@ export interface MoneyPrinterStatus {
   ffmpegPath?: string;
   lastChecked: string;
   message?: string;
+  pingVerified?: boolean;
+  generationVerified?: boolean;
+  lastCompletedTaskId?: string;
+  lastCompletedReelPath?: string;
+  engineStatus?: 'READY' | 'INITIALIZING' | 'OFFLINE';
 }
 
 export interface MoneyPrinterGenerateParams {
@@ -66,6 +71,7 @@ export class MoneyPrinterTurboService {
 
   /**
    * Health/Ping check for MoneyPrinterTurbo local service
+   * Verifies both /ping response and generation-task completion before marking engine READY.
    */
   public async getStatus(): Promise<MoneyPrinterStatus> {
     const defaultStatus: MoneyPrinterStatus = {
@@ -76,7 +82,8 @@ export class MoneyPrinterTurboService {
       voiceProvider: 'edge_tts',
       requiresExternalApiKey: false,
       aspectRatio: '9:16',
-      lastChecked: new Date().toISOString()
+      lastChecked: new Date().toISOString(),
+      engineStatus: 'OFFLINE'
     };
 
     try {
@@ -88,15 +95,48 @@ export class MoneyPrinterTurboService {
       if (res.ok) {
         const text = await res.text();
         const isPong = text.includes('pong');
+
+        // Verify generation task completion
+        let hasCompletedTask = false;
+        let lastTaskId: string | undefined = undefined;
+        let lastPath: string | undefined = undefined;
+        try {
+          if (fs.existsSync(this.reviewRecordsPath)) {
+            const records = JSON.parse(fs.readFileSync(this.reviewRecordsPath, 'utf8'));
+            const mptRecord = records.find(
+              (r: any) =>
+                (r.engine === 'MoneyPrinterTurbo' || (r.id && r.id.includes('mpt'))) &&
+                r.mediaPath &&
+                fs.existsSync(r.mediaPath)
+            );
+            if (mptRecord) {
+              hasCompletedTask = true;
+              lastTaskId = mptRecord.id;
+              lastPath = mptRecord.mediaPath;
+            }
+          }
+        } catch {}
+
+        const isReady = isPong && hasCompletedTask;
         return {
           ...defaultStatus,
           available: isPong,
-          message: isPong ? 'MoneyPrinterTurbo service is online and ready' : `Unexpected ping response: ${text}`
+          pingVerified: isPong,
+          generationVerified: hasCompletedTask,
+          lastCompletedTaskId: lastTaskId,
+          lastCompletedReelPath: lastPath,
+          engineStatus: isReady ? 'READY' : (isPong ? 'INITIALIZING' : 'OFFLINE'),
+          message: isReady
+            ? 'MoneyPrinterTurbo engine is READY: /ping verified (pong) & generation task verified'
+            : isPong
+            ? 'MoneyPrinterTurbo ping verified; awaiting initial task completion'
+            : `Unexpected ping response: ${text}`
         };
       } else {
         return {
           ...defaultStatus,
           available: false,
+          engineStatus: 'OFFLINE',
           message: `HTTP ${res.status}: ${res.statusText}`
         };
       }
@@ -104,6 +144,7 @@ export class MoneyPrinterTurboService {
       return {
         ...defaultStatus,
         available: false,
+        engineStatus: 'OFFLINE',
         message: `Connection failed: ${err.message || 'Service offline'}`
       };
     }

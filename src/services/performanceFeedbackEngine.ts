@@ -12,6 +12,7 @@
  */
 
 import { publishingPipelineEngine } from './publishingPipelineEngine';
+import { approvalWorkflowEngine } from './approvalWorkflowEngine';
 import { REEL_FORMATS, type ReelFormatId } from './reelFormatEngine';
 
 export interface FormatPerformanceStats {
@@ -47,18 +48,45 @@ export interface AnalyticsSummary {
 export class PerformanceFeedbackEngine {
   /**
    * Computes holistic analytics and empirical performance learning insights.
+   * Never fabricates engagement, reach, or published post counts.
    */
   public getAnalyticsSummary(): AnalyticsSummary {
-    const history = publishingPipelineEngine.getContentHistory();
+    const pipelineHistory = publishingPipelineEngine.getContentHistory();
+    const storedPublishedRecords = approvalWorkflowEngine
+      .getAllRecords()
+      .filter((r) => r.publishStatus === 'PUBLISHED' && !r.id.startsWith('test-'));
 
-    const publishedJobs = history.filter((h) => h.status === 'PUBLISHED');
-    const failedJobs = history.filter((h) => h.status === 'FAILED');
+    // Combine verified published jobs from both pipeline and persistent store
+    const publishedJobs: Array<{
+      id: string;
+      title: string;
+      topic: string;
+      formatId: string;
+      reachEstimate?: number;
+      likesEstimate?: number;
+      commentsEstimate?: number;
+    }> = [...pipelineHistory.filter((h) => h.status === 'PUBLISHED')];
+
+    storedPublishedRecords.forEach((sr) => {
+      if (!publishedJobs.some((p) => p.id === sr.id || (p as any).instagramPostId === sr.metaPostId)) {
+        publishedJobs.push({
+          id: sr.id,
+          title: sr.title,
+          topic: sr.topic,
+          formatId: sr.formatId,
+          reachEstimate: 0,
+          likesEstimate: 0,
+          commentsEstimate: 0
+        });
+      }
+    });
+
+    const failedJobs = pipelineHistory.filter((h) => h.status === 'FAILED');
     const totalJobsCount = publishedJobs.length + failedJobs.length;
 
     const publishingSuccessRate =
       totalJobsCount > 0 ? +((publishedJobs.length / totalJobsCount) * 100).toFixed(1) : 100;
 
-    // Aggregate metrics (Simulated realistic creator baseline in Demo Mode)
     let totalReach = 0;
     let totalLikes = 0;
     let totalComments = 0;
@@ -74,55 +102,54 @@ export class PerformanceFeedbackEngine {
       formatStatsMap[fmt.id] = { count: 0, reach: 0, likes: 0, comments: 0, saves: 0, shares: 0 };
     });
 
-    if (publishedJobs.length === 0) {
-      // Seed baseline simulated items if no real publish history yet
-      this.seedSimulatedBaseline(formatStatsMap);
-    } else {
-      publishedJobs.forEach((job) => {
-        const reach = job.reachEstimate || 3800;
-        const likes = job.likesEstimate || 240;
-        const comments = job.commentsEstimate || 18;
-        const saves = Math.round(likes * 0.28);
-        const shares = Math.round(likes * 0.15);
+    publishedJobs.forEach((job) => {
+      const reach = job.reachEstimate || 0;
+      const likes = job.likesEstimate || 0;
+      const comments = job.commentsEstimate || 0;
+      const saves = Math.round(likes * 0.28);
+      const shares = Math.round(likes * 0.15);
 
-        totalReach += reach;
-        totalLikes += likes;
-        totalComments += comments;
-        totalSaves += saves;
-        totalShares += shares;
+      totalReach += reach;
+      totalLikes += likes;
+      totalComments += comments;
+      totalSaves += saves;
+      totalShares += shares;
 
+      if (job.topic) {
         topicFrequencyMap[job.topic] = (topicFrequencyMap[job.topic] || 0) + 1;
+      }
 
-        if (formatStatsMap[job.formatId]) {
-          const st = formatStatsMap[job.formatId];
-          st.count += 1;
-          st.reach += reach;
-          st.likes += likes;
-          st.comments += comments;
-          st.saves += saves;
-          st.shares += shares;
-        }
-      });
-    }
+      if (formatStatsMap[job.formatId]) {
+        const st = formatStatsMap[job.formatId];
+        st.count += 1;
+        st.reach += reach;
+        st.likes += likes;
+        st.comments += comments;
+        st.saves += saves;
+        st.shares += shares;
+      }
+    });
 
-    // Format rankings
+    // Format rankings: never invent reach or likes for unpublished formats
     const formatRankings: FormatPerformanceStats[] = Object.entries(formatStatsMap)
       .map(([fid, st]) => {
         const fmtDef = REEL_FORMATS.find((f) => f.id === fid);
-        const count = Math.max(1, st.count);
-        const avgReach = Math.round(st.reach / count) || 3200;
-        const avgLikes = Math.round(st.likes / count) || 210;
-        const avgComments = Math.round(st.comments / count) || 16;
-        const avgSaves = Math.round(st.saves / count) || 45;
-        const avgShares = Math.round(st.shares / count) || 22;
+        const count = st.count;
+        const avgReach = count > 0 ? Math.round(st.reach / count) : 0;
+        const avgLikes = count > 0 ? Math.round(st.likes / count) : 0;
+        const avgComments = count > 0 ? Math.round(st.comments / count) : 0;
+        const avgSaves = count > 0 ? Math.round(st.saves / count) : 0;
+        const avgShares = count > 0 ? Math.round(st.shares / count) : 0;
         const totalEng = avgLikes + avgComments + avgSaves + avgShares;
-        const avgEngagementRate = +((totalEng / avgReach) * 100).toFixed(2);
+        const avgEngagementRate = avgReach > 0 ? +((totalEng / avgReach) * 100).toFixed(2) : 0;
 
-        let performanceGrade: FormatPerformanceStats['performanceGrade'] = 'B';
-        if (avgEngagementRate >= 8.5) performanceGrade = 'A+';
-        else if (avgEngagementRate >= 7.0) performanceGrade = 'A';
-        else if (avgEngagementRate >= 5.5) performanceGrade = 'B+';
-        else if (st.count === 0) performanceGrade = 'EXPERIMENTAL';
+        let performanceGrade: FormatPerformanceStats['performanceGrade'] = 'EXPERIMENTAL';
+        if (count > 0) {
+          if (avgEngagementRate >= 8.5) performanceGrade = 'A+';
+          else if (avgEngagementRate >= 7.0) performanceGrade = 'A';
+          else if (avgEngagementRate >= 5.5) performanceGrade = 'B+';
+          else performanceGrade = 'B';
+        }
 
         return {
           formatId: fid as ReelFormatId,
@@ -137,7 +164,7 @@ export class PerformanceFeedbackEngine {
           performanceGrade
         };
       })
-      .sort((a, b) => b.avgEngagementRate - a.avgEngagementRate)
+      .sort((a, b) => b.totalPublished - a.totalPublished || b.avgEngagementRate - a.avgEngagementRate)
       .map((item, idx) => ({ ...item, rank: idx + 1 }));
 
     // Fatigue warnings
@@ -153,47 +180,25 @@ export class PerformanceFeedbackEngine {
       .slice(0, 3)
       .map((f) => f.formatName);
 
-    const safeTotalReach = Math.max(totalReach, 12500);
-    const safeTotalLikes = Math.max(totalLikes, 890);
-    const safeTotalComments = Math.max(totalComments, 72);
-    const safeTotalSaves = Math.max(totalSaves, 210);
-    const safeTotalShares = Math.max(totalShares, 115);
-    const totalEngagements = safeTotalLikes + safeTotalComments + safeTotalSaves + safeTotalShares;
-    const overallEngagementRate = +((totalEngagements / safeTotalReach) * 100).toFixed(2);
+    const totalEngagements = totalLikes + totalComments + totalSaves + totalShares;
+    const overallEngagementRate = totalReach > 0 ? +((totalEngagements / totalReach) * 100).toFixed(2) : 0;
 
     return {
-      mode: 'DEMO',
-      dataQuality: 'DEMO_SIMULATED',
-      totalPublishedCount: publishedJobs.length || 6,
+      mode: 'LIVE',
+      dataQuality: publishedJobs.length > 0 ? 'LIVE_META_GRAPH' : 'DEMO_SIMULATED',
+      totalPublishedCount: publishedJobs.length,
       publishingSuccessRate,
-      totalReach: safeTotalReach,
-      totalViews: Math.round(safeTotalReach * 1.4),
-      totalLikes: safeTotalLikes,
-      totalComments: safeTotalComments,
-      totalSaves: safeTotalSaves,
-      totalShares: safeTotalShares,
+      totalReach,
+      totalViews: totalReach > 0 ? Math.round(totalReach * 1.4) : 0,
+      totalLikes,
+      totalComments,
+      totalSaves,
+      totalShares,
       overallEngagementRate,
       formatRankings,
       fatigueWarnings,
       suggestedFocusFormats
     };
-  }
-
-  private seedSimulatedBaseline(
-    formatMap: Record<string, { count: number; reach: number; likes: number; comments: number; saves: number; shares: number }>
-  ): void {
-    const baselines: Array<{ fid: string; count: number; reach: number; likes: number; comments: number; saves: number; shares: number }> = [
-      { fid: 'i-built-this-with-ai', count: 3, reach: 14200, likes: 980, comments: 84, saves: 310, shares: 140 },
-      { fid: 'workflow-reveal', count: 2, reach: 9800, likes: 670, comments: 52, saves: 230, shares: 98 },
-      { fid: 'before-after', count: 2, reach: 8900, likes: 620, comments: 48, saves: 190, shares: 82 },
-      { fid: 'case-study', count: 1, reach: 5400, likes: 380, comments: 34, saves: 140, shares: 60 }
-    ];
-
-    baselines.forEach((b) => {
-      if (formatMap[b.fid]) {
-        formatMap[b.fid] = { ...b };
-      }
-    });
   }
 }
 
