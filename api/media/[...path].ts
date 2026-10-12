@@ -9,7 +9,9 @@ export default async function handler(request: Request) {
     .replace(/^\/api\/media\//, '')
     .replace(/^\/media\//, '');
 
-  const ngrokHost = process.env.UPSTREAM_HOST || 'https://default-penholder-goes.ngrok-free.dev';
+  const ngrokHost =
+    ((globalThis as any).process?.env?.UPSTREAM_HOST as string | undefined) ||
+    'https://default-penholder-goes.ngrok-free.dev';
   const targetUrl = `${ngrokHost}/media/${mediaPath}${url.search}`;
 
   const forwardHeaders = new Headers(request.headers);
