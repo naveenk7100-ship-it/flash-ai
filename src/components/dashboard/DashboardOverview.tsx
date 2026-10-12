@@ -9,7 +9,7 @@
  * 5. 8-Module Operations Grid, Recent Published Reels, Upcoming 7-Day Schedule & Activity Timeline
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
 import { automationScheduler } from '../../services/automationScheduler';
 import { publishingPipelineEngine, type PublishingPipelineJob } from '../../services/publishingPipelineEngine';
@@ -84,6 +84,9 @@ export const DashboardOverview: React.FC = () => {
     generationVerified?: boolean;
   } | null>(null);
   const [recentReels, setRecentReels] = useState<ReviewableReelRecord[]>([]);
+  const [videoBlobUrl, setVideoBlobUrl] = useState<string | null>(null);
+  const [isVideoLoading, setIsVideoLoading] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const [isGeneratingMpt, setIsGeneratingMpt] = useState(false);
 
   const [mediaProviderStatus, setMediaProviderStatus] = useState<{
@@ -145,7 +148,51 @@ export const DashboardOverview: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    if (!todayReel?.mediaUrl) {
+      setVideoBlobUrl(null);
+      setVideoError(false);
+      return;
+    }
+    let isCancelled = false;
+    setIsVideoLoading(true);
     setVideoError(false);
+
+    // Fetch media with bypass header for ngrok / remote proxy compatibility
+    fetch(todayReel.mediaUrl, {
+      headers: { 'ngrok-skip-browser-warning': 'true' }
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.blob();
+      })
+      .then((blob) => {
+        if (isCancelled) return;
+        // Verify it's an actual video/binary payload (not an HTML error page)
+        if (blob.type.includes('html') || blob.size < 1000) {
+          throw new Error('Received invalid non-video stream payload');
+        }
+        const objUrl = URL.createObjectURL(blob);
+        setVideoBlobUrl(objUrl);
+        setVideoError(false);
+      })
+      .catch((err) => {
+        console.warn('[DashboardOverview] Blob media load notice, using direct stream:', err);
+        if (!isCancelled) {
+          setVideoBlobUrl(todayReel.mediaUrl);
+        }
+      })
+      .finally(() => {
+        if (!isCancelled) {
+          setIsVideoLoading(false);
+        }
+      });
+
+    return () => {
+      isCancelled = true;
+      if (videoBlobUrl && videoBlobUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(videoBlobUrl);
+      }
+    };
   }, [todayReel?.id, todayReel?.mediaUrl]);
 
   const fetchMptStatus = async () => {
@@ -772,8 +819,9 @@ export const DashboardOverview: React.FC = () => {
                 {todayReel.mediaUrl && !videoError ? (
                   <div className="relative w-full h-full bg-black">
                     <video
-                      key={todayReel.mediaUrl}
-                      src={todayReel.mediaUrl}
+                      ref={videoRef}
+                      key={videoBlobUrl || todayReel.mediaUrl}
+                      src={videoBlobUrl || todayReel.mediaUrl}
                       poster={todayReel.thumbnailUrl && !todayReel.thumbnailUrl.endsWith('.mp4') ? todayReel.thumbnailUrl : undefined}
                       controls
                       playsInline
@@ -782,10 +830,20 @@ export const DashboardOverview: React.FC = () => {
                       preload="auto"
                       onError={(e) => {
                         console.warn('[DashboardOverview] Video playback error event:', e);
-                        setVideoError(true);
+                        if (!isVideoLoading) {
+                          setVideoError(true);
+                        }
                       }}
                       className="w-full h-full object-cover rounded-3xl bg-black"
                     />
+
+                    {isVideoLoading && (
+                      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center gap-2 z-20 pointer-events-none">
+                        <div className="w-8 h-8 rounded-full border-2 border-cyan-400 border-t-transparent animate-spin" />
+                        <span className="text-[11px] text-cyan-300 font-mono font-bold">Buffering 9:16 Video Stream...</span>
+                      </div>
+                    )}
+
                     {/* Top HUD Badges */}
                     <div className="absolute top-3 left-3 right-3 flex items-center justify-between pointer-events-none z-10">
                       <span className="px-2 py-0.5 rounded-full bg-black/80 text-white font-mono text-[10px] backdrop-blur-md border border-white/10">
@@ -799,7 +857,13 @@ export const DashboardOverview: React.FC = () => {
                     {/* Quick Sound Toggle Overlay */}
                     <button
                       type="button"
-                      onClick={() => setIsMuted(!isMuted)}
+                      onClick={() => {
+                        const nextMuted = !isMuted;
+                        setIsMuted(nextMuted);
+                        if (videoRef.current) {
+                          videoRef.current.muted = nextMuted;
+                        }
+                      }}
                       className="absolute bottom-3 right-3 p-2 rounded-xl bg-black/70 hover:bg-black/90 text-white border border-white/20 backdrop-blur-md transition-colors z-10"
                       title={isMuted ? 'Unmute Audio' : 'Mute Audio'}
                     >

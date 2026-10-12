@@ -13,10 +13,31 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import { execSync } from 'node:child_process';
+import { createRequire } from 'node:module';
 import { MEDIA_DIRS } from '../media/storagePaths.ts';
 import { MediaValidator, type Mp4StreamReport } from '../media/mediaValidator.ts';
 import { Logger } from '../utils/logger.ts';
 import { cloudStorageManager } from '../storage/cloudStorageManager.ts';
+
+const require = createRequire(import.meta.url);
+
+export interface EdgeVoiceOption {
+  id: string;
+  name: string;
+  gender: string;
+  locale: string;
+}
+
+export const AVAILABLE_EDGE_TTS_VOICES: EdgeVoiceOption[] = [
+  { id: 'en-US-ChristopherNeural-Male', name: 'Christopher (US Male - Authority/Tech)', gender: 'Male', locale: 'en-US' },
+  { id: 'en-US-GuyNeural-Male', name: 'Guy (US Male - Casual/Conversational)', gender: 'Male', locale: 'en-US' },
+  { id: 'en-US-AriaNeural-Female', name: 'Aria (US Female - Expressive/Dynamic)', gender: 'Female', locale: 'en-US' },
+  { id: 'en-US-JennyNeural-Female', name: 'Jenny (US Female - Clear/Friendly)', gender: 'Female', locale: 'en-US' },
+  { id: 'en-US-EricNeural-Male', name: 'Eric (US Male - Deep/Narrative)', gender: 'Male', locale: 'en-US' },
+  { id: 'en-GB-RyanNeural-Male', name: 'Ryan (UK Male - Authoritative)', gender: 'Male', locale: 'en-GB' },
+  { id: 'en-GB-SoniaNeural-Female', name: 'Sonia (UK Female - Polished)', gender: 'Female', locale: 'en-GB' },
+];
 
 export interface MoneyPrinterStatus {
   available: boolean;
@@ -34,6 +55,9 @@ export interface MoneyPrinterStatus {
   lastCompletedTaskId?: string;
   lastCompletedReelPath?: string;
   engineStatus?: 'READY' | 'INITIALIZING' | 'OFFLINE';
+  supportedVoices?: EdgeVoiceOption[];
+  bgmEnabled?: boolean;
+  freeTierActive?: boolean;
 }
 
 export interface MoneyPrinterGenerateParams {
@@ -126,6 +150,9 @@ export class MoneyPrinterTurboService {
           lastCompletedTaskId: lastTaskId,
           lastCompletedReelPath: lastPath,
           engineStatus: isReady ? 'READY' : (isPong ? 'INITIALIZING' : 'OFFLINE'),
+          supportedVoices: AVAILABLE_EDGE_TTS_VOICES,
+          bgmEnabled: true,
+          freeTierActive: true,
           message: isReady
             ? 'MoneyPrinterTurbo engine is READY: /ping verified (pong) & generation task verified'
             : isPong
@@ -335,6 +362,25 @@ export class MoneyPrinterTurboService {
     const caption = `⚡ ${topic}\n\n${script}\n\n${hashtags.join(' ')}`;
     const hook = script.split('.')[0] || topic;
 
+    // Extract thumbnail frame (JPEG) using ffmpeg-static
+    let thumbnailUrl = relativeMediaUrl;
+    try {
+      const ffmpeg = require('ffmpeg-static');
+      if (ffmpeg) {
+        if (!fs.existsSync(MEDIA_DIRS.thumbnails)) {
+          fs.mkdirSync(MEDIA_DIRS.thumbnails, { recursive: true });
+        }
+        const thumbFilename = `thumb_${path.basename(targetFilename, '.mp4')}.jpg`;
+        const thumbFilePath = path.resolve(MEDIA_DIRS.thumbnails, thumbFilename);
+        execSync(`"${ffmpeg}" -y -ss 00:00:01 -i "${targetFilePath}" -vframes 1 -q:v 2 "${thumbFilePath}"`, { stdio: 'ignore' });
+        if (fs.existsSync(thumbFilePath)) {
+          thumbnailUrl = `/media/thumbnails/${thumbFilename}`;
+        }
+      }
+    } catch (thumbErr: any) {
+      Logger.warn(`[MoneyPrinterTurbo] Thumbnail extraction skipped: ${thumbErr?.message || thumbErr}`, { component: 'Media' });
+    }
+
     const reviewRecord: any = {
       id: reviewRecordId,
       reelId,
@@ -348,7 +394,7 @@ export class MoneyPrinterTurboService {
       hashtags,
       mediaPath: targetFilePath,
       mediaUrl: relativeMediaUrl,
-      thumbnailUrl: relativeMediaUrl, // Browsers render first video frame
+      thumbnailUrl,
       aspectRatio: '9:16' as const,
       durationSeconds,
       scenesCount,
