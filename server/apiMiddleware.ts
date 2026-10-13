@@ -110,7 +110,14 @@ export function createAiApiHandler() {
     // ==========================================
     // 0. STATIC MEDIA SERVING (/media/*)
     // ==========================================
-    if (url.startsWith('/media/') || url.startsWith('/api/media/')) {
+    const isStaticMediaRoute =
+      url.startsWith('/media/') ||
+      url.startsWith('/api/media/renders/') ||
+      url.startsWith('/api/media/thumbnails/') ||
+      url.startsWith('/api/media/audio/') ||
+      url.startsWith('/api/media/uploads/');
+
+    if (isStaticMediaRoute) {
       const relativePath = decodeURIComponent(url.replace(/^\/(?:api\/)?media\//, ''));
       const safePath = path.normalize(path.join(MEDIA_ROOT, relativePath));
 

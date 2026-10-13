@@ -5,16 +5,12 @@
   "cleanUrls": true,
   "rewrites": [
     {
-      "source": "/media/:path*",
-      "destination": "/api/media/:path*"
+      "source": "/api/:match*",
+      "destination": "/api/proxy?__route=/api/:match*"
     },
     {
-      "source": "/api/media/:path*",
-      "destination": "/api/media/:path*"
-    },
-    {
-      "source": "/api/:path*",
-      "destination": "https://default-penholder-goes.ngrok-free.dev/api/:path*"
+      "source": "/media/:match*",
+      "destination": "/api/proxy?__route=/media/:match*"
     },
     {
       "source": "/(.*)",

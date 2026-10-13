@@ -48,3 +48,4 @@ DEBUG_*.png
 Thumbs.db
 
 .vercel
+.env*
