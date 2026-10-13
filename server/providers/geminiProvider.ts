@@ -4,8 +4,8 @@ import type {
   GeneratedContentPackage,
   DailyBatchParams,
   ContentAngle
-} from './types.js';
-import { ANGLE_GUIDELINES, varietyEngine } from '../varietyEngine.js';
+} from './types.ts';
+import { ANGLE_GUIDELINES, varietyEngine } from '../varietyEngine.ts';
 
 export class GeminiProvider implements IAIProvider {
   public readonly name = 'Google Gemini (Official API)';

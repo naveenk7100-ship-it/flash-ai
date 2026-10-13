@@ -3,9 +3,10 @@ import type {
   GenerateContentInput,
   GeneratedContentPackage,
   DailyBatchParams
-} from './types.js';
-import { GeminiProvider } from './geminiProvider.js';
-import { DemoMockProvider } from './demoMockProvider.js';
+} from './types.ts';
+import { GeminiProvider } from './geminiProvider.ts';
+import { DemoMockProvider } from './demoMockProvider.ts';
+import { openRouterProvider } from './openRouterProvider.ts';
 
 export class AIProviderManager {
   private providers: Map<string, IAIProvider> = new Map();
@@ -48,16 +49,19 @@ export class AIProviderManager {
     model: string;
     availableProviders: string[];
     isDemo: boolean;
+    isOpenRouterConfigured: boolean;
   } {
     const active = this.getActiveProvider();
     const isGeminiAvailable = Boolean(this.providers.get('gemini')?.isAvailable());
+    const isOpenRouterConfigured = openRouterProvider.isAvailable();
 
     return {
       isConnected: true, // Always ready to generate
       provider: active.name,
       model: isGeminiAvailable ? 'gemini-2.0-flash' : 'flash-ai-production-engine-v1',
-      availableProviders: Array.from(this.providers.keys()),
-      isDemo: !isGeminiAvailable || this.activeProviderName === 'demo'
+      availableProviders: [...Array.from(this.providers.keys()), ...(isOpenRouterConfigured ? ['openrouter'] : [])],
+      isDemo: !isGeminiAvailable || this.activeProviderName === 'demo',
+      isOpenRouterConfigured
     };
   }
 

@@ -3,8 +3,8 @@ import type {
   GenerateContentInput,
   GeneratedContentPackage,
   DailyBatchParams
-} from './types.js';
-import { varietyEngine } from '../varietyEngine.js';
+} from './types.ts';
+import { varietyEngine } from '../varietyEngine.ts';
 
 export class DemoMockProvider implements IAIProvider {
   public readonly name = 'FLASH.Ai Intelligent Demo Provider (Creator-Grade)';

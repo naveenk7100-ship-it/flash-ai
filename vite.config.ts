@@ -8,7 +8,14 @@ import { createAiApiHandler } from './server/apiMiddleware.ts';
 dotenv.config();
 
 function flashAiApiPlugin(): Plugin {
-  const handler = createAiApiHandler();
+  let handler: any = null;
+  const getHandler = () => {
+    if (!handler) {
+      handler = createAiApiHandler();
+    }
+    return handler;
+  };
+
   return {
     name: 'flash-ai-api-server',
     configureServer(server) {
@@ -17,7 +24,7 @@ function flashAiApiPlugin(): Plugin {
         if (raw.startsWith('/flash-ai/api/') || raw.startsWith('/flash-ai/media/')) {
           req.url = raw.substring('/flash-ai'.length);
         }
-        handler(req, res, next);
+        getHandler()(req, res, next);
       });
     },
     configurePreviewServer(server) {
@@ -26,7 +33,7 @@ function flashAiApiPlugin(): Plugin {
         if (raw.startsWith('/flash-ai/api/') || raw.startsWith('/flash-ai/media/')) {
           req.url = raw.substring('/flash-ai'.length);
         }
-        handler(req, res, next);
+        getHandler()(req, res, next);
       });
     }
   };

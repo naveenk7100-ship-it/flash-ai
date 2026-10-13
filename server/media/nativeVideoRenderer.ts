@@ -412,12 +412,21 @@ export class NativeVideoRenderer {
         const volReport = await this.measureAudioLoudness(tempOutputMp4);
         maxVolumeDb = volReport.maxVolumeDb;
         meanVolumeDb = volReport.meanVolumeDb;
-        hasAudibleVoice = volReport.maxVolumeDb > -45.0;
+        hasAudibleVoice = volReport.maxVolumeDb > -35.0;
       }
 
       // 5. Inspect and Validate Rendered MP4
       const streamReport = MediaValidator.inspectMp4File(tempOutputMp4);
-      if (!streamReport.isValidMp4 || !streamReport.hasVideoStream) {
+      if (
+        !streamReport.isValidMp4 ||
+        !streamReport.hasVideoStream ||
+        !streamReport.hasAudioStream ||
+        streamReport.hasDecodeError ||
+        !streamReport.isAudible ||
+        streamReport.isBlackFrames ||
+        streamReport.totalSizeBytes < 100_000 ||
+        streamReport.errors.length > 0
+      ) {
         throw new Error(`Rendered video failed stream validation: ${streamReport.errors.join(', ')}`);
       }
 

@@ -19,11 +19,14 @@ export interface SafeEnvReport {
   elevenLabsVoiceId: 'CONFIGURED' | 'MISSING';
   elevenLabsModelId: 'CONFIGURED' | 'MISSING';
   elevenLabsEnabled: boolean;
+  openRouterApiKey: 'CONFIGURED' | 'MISSING';
+  openRouterModel: string;
   storageRoot: string;
   isReadyForMetaLive: boolean;
   isReadyForAiGeneration: boolean;
   isReadyForCreatomate: boolean;
   isReadyForElevenLabs: boolean;
+  isReadyForOpenRouter: boolean;
 }
 
 export class EnvConfig {
@@ -106,6 +109,14 @@ export class EnvConfig {
     return process.env.ELEVENLABS_MODEL_ID?.trim() || 'eleven_multilingual_v2';
   }
 
+  public static get openRouterApiKey(): string {
+    return process.env.OPENROUTER_API_KEY?.trim() || '';
+  }
+
+  public static get openRouterModel(): string {
+    return process.env.OPENROUTER_MODEL?.trim() || 'meta-llama/llama-3.3-70b-instruct';
+  }
+
   public static get storageRoot(): string {
     return process.env.STORAGE_ROOT?.trim() || './server/data';
   }
@@ -130,6 +141,7 @@ export class EnvConfig {
     const hasElevenLabsKey = Boolean(this.elevenLabsApiKey && this.elevenLabsApiKey.length > 20);
     const hasElevenLabsVoice = Boolean(this.elevenLabsVoiceId && this.elevenLabsVoiceId.length > 5);
     const hasElevenLabsModel = Boolean(this.elevenLabsModelId && this.elevenLabsModelId.length > 3);
+    const hasOpenRouterKey = Boolean(this.openRouterApiKey && this.openRouterApiKey.length > 10);
 
     const isReadyForMetaLive = hasMetaToken && hasMetaAccount && hasPublicUrl && this.metaPublishingMode === 'LIVE';
 
@@ -151,11 +163,14 @@ export class EnvConfig {
       elevenLabsVoiceId: hasElevenLabsVoice ? 'CONFIGURED' : 'MISSING',
       elevenLabsModelId: hasElevenLabsModel ? 'CONFIGURED' : 'MISSING',
       elevenLabsEnabled: this.elevenLabsEnabled,
+      openRouterApiKey: hasOpenRouterKey ? 'CONFIGURED' : 'MISSING',
+      openRouterModel: this.openRouterModel,
       storageRoot: this.storageRoot,
       isReadyForMetaLive,
       isReadyForAiGeneration: hasAi,
       isReadyForCreatomate: hasCreatomateKey,
-      isReadyForElevenLabs: hasElevenLabsKey && this.elevenLabsEnabled
+      isReadyForElevenLabs: hasElevenLabsKey && this.elevenLabsEnabled,
+      isReadyForOpenRouter: hasOpenRouterKey
     };
   }
 
@@ -173,6 +188,7 @@ export class EnvConfig {
     console.log(`  Mode: [${r.nodeEnv.toUpperCase()}] • Port: ${r.port}`);
     console.log('====================================================');
     console.log(`  • AI Provider (Gemini):     ${r.geminiApiKey}`);
+    console.log(`  • OpenRouter API:           ${r.openRouterApiKey}`);
     console.log(`  • Meta Access Token:        ${r.metaAccessToken}`);
     console.log(`  • Meta Account ID:          ${r.metaInstagramAccountId}`);
     console.log(`  • Meta Webhook Secret:      ${r.metaVerifyToken}`);
@@ -180,7 +196,6 @@ export class EnvConfig {
     console.log(`  • Creatomate Render API:    ${r.creatomateApiKey}`);
     console.log(`  • Creatomate Template ID:   ${r.creatomateTemplateId}`);
     console.log(`  • Public Base URL:          ${r.publicBaseUrl || 'NOT CONFIGURED (Local/DEMO Only)'}`);
-    console.log(`  • Storage Persistence Root: ${r.storageRoot}`);
     console.log(`  • Meta Live Ready:          ${r.isReadyForMetaLive ? 'YES (Live API Active)' : 'NO (Safe DEMO Mode)'}`);
     console.log(`  • Creatomate Ready:         ${r.isReadyForCreatomate ? 'YES' : 'NO'}`);
     console.log('====================================================\n');

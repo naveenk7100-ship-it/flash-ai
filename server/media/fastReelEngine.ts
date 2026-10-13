@@ -38,7 +38,6 @@ import { contentMemoryService } from '../../src/services/contentMemoryService.js
 import { MediaValidator } from './mediaValidator.js';
 import { elevenLabsProvider } from './providers/elevenLabsProvider.js';
 import { nativeVideoRenderer } from './nativeVideoRenderer.js';
-import { synthesizeAndPersistServerReel } from './videoSynthesizer.js';
 import { MEDIA_ROOT, sanitizeFilename } from './storagePaths.js';
 import type {
   ReelProductionProject,
@@ -155,8 +154,38 @@ export class FastReelEngine {
       originalUserScript = input.script.trim();
       finalScript = originalUserScript; // NEVER modify or append CTAs to user scripts
     } else {
-      // Synthesize topic-specific informational script
-      finalScript = `Here is a breakdown of ${rawTopic}. First, it allows you to streamline everyday tasks with instant AI assistance. Second, it processes complex queries with real-time accuracy and verified citations. Third, it connects seamlessly into your existing workflow. That is what makes this development useful for everyday AI users.`;
+      // Use Gemini when configured for dynamic script & storyboard planning
+      let geminiScript: string | null = null;
+      if (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.length > 10) {
+        try {
+          const { GeminiProvider } = await import('../providers/geminiProvider.ts');
+          const gemini = new GeminiProvider();
+          if (gemini.isAvailable()) {
+            const pkg = await gemini.generate({
+              topic: rawTopic,
+              targetAudience: 'AI Creators, Developers & Knowledge Workers',
+              pillar: 'ai-tools',
+              platform: 'instagram',
+              duration: '25s',
+              tone: 'educational-cinematic',
+              cta: 'Follow for daily breakdowns'
+            });
+            if (pkg?.script && pkg.script.length > 30) {
+              geminiScript = pkg.script.trim();
+              console.log(`[FastReelEngine] Gemini generated dynamic script for "${rawTopic}" (${geminiScript.length} chars)`);
+            }
+          }
+        } catch (geminiErr: any) {
+          console.warn(`[FastReelEngine] Gemini script planning notice: ${geminiErr?.message || geminiErr}. Engaging structured topic breakdown.`);
+        }
+      }
+
+      if (geminiScript) {
+        finalScript = geminiScript;
+      } else {
+        // Structured topic-specific fallback script
+        finalScript = `Here is a breakdown of ${rawTopic}. First, it allows you to streamline complex workflows with high precision and verified steps. Second, it processes input with real-time accuracy and zero hallucination risk. Third, it connects seamlessly into modern production environments. That makes it essential for high-performance productivity.`;
+      }
     }
 
     const scriptHash = crypto.createHash('sha256').update(finalScript).digest('hex');
@@ -341,49 +370,19 @@ export class FastReelEngine {
         throw new Error('Render output MP4 file was not created');
       }
     } catch (renderErr: any) {
-      console.warn(`[FastReelEngine] Native frame render notice (${renderErr.message}). Engaging compliant vertical MP4 binary synthesis with audio muxing...`);
-      try {
-        const fallbackResult = synthesizeAndPersistServerReel({
-          projectId: sanitizedId,
-          title: sceneAnalyses[0]?.onScreenHeadline || rawTopic,
-          topic: rawTopic,
-          formatName: templateSelection.formatName,
-          durationSeconds: exactDuration,
-          audioPath: audioFilePath
-        });
-        if (fallbackResult.success && fs.existsSync(fallbackResult.outputVideoPath)) {
-          renderResult = {
-            success: true,
-            outputPath: fallbackResult.outputVideoPath,
-            outputUrl: fallbackResult.outputVideoUrl,
-            durationSeconds: fallbackResult.durationSeconds,
-            width: fallbackResult.width,
-            height: fallbackResult.height,
-            fileSizeBytes: fallbackResult.fileSizeBytes,
-            fps: 30,
-            hasAudio: true,
-            hasVideo: true,
-            audioCodec: 'aac',
-            hasAudibleVoice: true,
-            sampledFrames: []
-          };
-        } else {
-          throw new Error('Fallback MP4 synthesis failed');
-        }
-      } catch (fallbackErr: any) {
-        const errorMsg = `Native frame rendering failed: ${renderErr.message || 'Video renderer error'}`;
-        const failRecord = createFailRecord('RENDER_FAILED', errorMsg);
-        upsertServerReviewRecord(failRecord);
-        return {
-          success: false,
-          reelRecord: failRecord,
-          generationTimeSeconds: parseFloat(((Date.now() - startTime) / 1000).toFixed(1)),
-          failureState: 'RENDER_FAILED',
-          sourceVerification: sourceReport,
-          scriptQuality,
-          errorMessage: errorMsg
-        };
-      }
+      const errorMsg = `Native frame rendering failed: ${renderErr.message || 'Video renderer error'}`;
+      console.error(`[FastReelEngine] ${errorMsg}`);
+      const failRecord = createFailRecord('RENDER_FAILED', errorMsg);
+      upsertServerReviewRecord(failRecord);
+      return {
+        success: false,
+        reelRecord: failRecord,
+        generationTimeSeconds: parseFloat(((Date.now() - startTime) / 1000).toFixed(1)),
+        failureState: 'RENDER_FAILED',
+        sourceVerification: sourceReport,
+        scriptQuality,
+        errorMessage: errorMsg
+      };
     }
 
     const videoOutputPath = renderResult.outputPath;
@@ -400,7 +399,16 @@ export class FastReelEngine {
     // 7. MEDIA STREAM OF TRUTH INSPECTION (MediaValidator)
     updateProgress('VALIDATING_MEDIA', 88);
     const mediaInspection = MediaValidator.inspectMp4File(videoOutputPath);
-    if (!mediaInspection.isValidMp4 || !mediaInspection.hasVideoStream || !mediaInspection.hasAudioStream || mediaInspection.totalSizeBytes < 1000) {
+    if (
+      !mediaInspection.isValidMp4 ||
+      !mediaInspection.hasVideoStream ||
+      !mediaInspection.hasAudioStream ||
+      mediaInspection.hasDecodeError ||
+      !mediaInspection.isAudible ||
+      mediaInspection.isBlackFrames ||
+      mediaInspection.totalSizeBytes < 100_000 ||
+      mediaInspection.errors.length > 0
+    ) {
       const errorMsg = `Media stream validation failed: ${mediaInspection.errors.join('; ') || 'Invalid MP4 or missing audio/video stream'}`;
       const failRecord = createFailRecord('MEDIA_FAILED', errorMsg);
       upsertServerReviewRecord(failRecord);

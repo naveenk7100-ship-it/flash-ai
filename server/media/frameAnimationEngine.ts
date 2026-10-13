@@ -245,36 +245,57 @@ export class FrameAnimationEngine {
     }
 
     return `
-<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg" style="background:#090B10; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg" style="background:#07090E; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
   <defs>
-    <linearGradient id="bgGrad" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#0A0D14"/>
-      <stop offset="50%" stop-color="#0F172A"/>
-      <stop offset="100%" stop-color="#080B11"/>
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#080B10"/>
+      <stop offset="45%" stop-color="#0E131E"/>
+      <stop offset="100%" stop-color="#05070A"/>
+    </linearGradient>
+    <linearGradient id="metallicGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="35%" stop-color="#E2E8F0"/>
+      <stop offset="70%" stop-color="#94A3B8"/>
+      <stop offset="100%" stop-color="#CBD5E1"/>
+    </linearGradient>
+    <linearGradient id="sageGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#E6F4EA"/>
+      <stop offset="50%" stop-color="#A7F3D0"/>
+      <stop offset="100%" stop-color="#10B981"/>
+    </linearGradient>
+    <linearGradient id="limeGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#34D399"/>
+      <stop offset="100%" stop-color="#059669"/>
     </linearGradient>
     <linearGradient id="cyanGrad" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0%" stop-color="#06B6D4"/>
-      <stop offset="100%" stop-color="#3B82F6"/>
+      <stop offset="0%" stop-color="#34D399"/>
+      <stop offset="100%" stop-color="#10B981"/>
     </linearGradient>
     <linearGradient id="purpleGrad" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0%" stop-color="#8B5CF6"/>
-      <stop offset="100%" stop-color="#EC4899"/>
+      <stop offset="0%" stop-color="#A7F3D0"/>
+      <stop offset="100%" stop-color="#059669"/>
     </linearGradient>
     <linearGradient id="emeraldGrad" x1="0" y1="0" x2="1" y2="0">
       <stop offset="0%" stop-color="#10B981"/>
-      <stop offset="100%" stop-color="#06B6D4"/>
+      <stop offset="100%" stop-color="#A7F3D0"/>
     </linearGradient>
     <linearGradient id="amberGrad" x1="0" y1="0" x2="1" y2="0">
       <stop offset="0%" stop-color="#F59E0B"/>
-      <stop offset="100%" stop-color="#EF4444"/>
+      <stop offset="100%" stop-color="#10B981"/>
     </linearGradient>
+    <radialGradient id="depthLighting" cx="50%" cy="30%" r="65%">
+      <stop offset="0%" stop-color="rgba(52,211,153,0.14)"/>
+      <stop offset="55%" stop-color="rgba(16,185,129,0.03)"/>
+      <stop offset="100%" stop-color="rgba(0,0,0,0)"/>
+    </radialGradient>
   </defs>
 
-  <!-- Background Canvas -->
+  <!-- Deep Obsidian Canvas & Radial Depth Lighting -->
   <rect width="${width}" height="${height}" fill="url(#bgGrad)"/>
+  <rect width="${width}" height="${height}" fill="url(#depthLighting)"/>
   
-  <!-- Ultra-subtle minimal grid (no distraction from UI content) -->
-  <g opacity="0.025" transform="translate(0, ${(globalTime * 8) % 60})">
+  <!-- Ultra-subtle minimal grid (no distraction from motion content) -->
+  <g opacity="0.02" transform="translate(0, ${(globalTime * 8) % 60})">
     <pattern id="grid" width="60" height="60" patternUnits="userSpaceOnUse">
       <path d="M 60 0 L 0 0 0 60" fill="none" stroke="#FFFFFF" stroke-width="1"/>
     </pattern>
@@ -288,15 +309,15 @@ export class FrameAnimationEngine {
 
   <!-- Global Brand & Format Bar Header (HEADER_SAFE_ZONE: Y 95-137) -->
   <g transform="translate(60, 95)">
-    <rect width="180" height="42" rx="21" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.12)" stroke-width="1.5"/>
-    <circle cx="24" cy="21" r="7" fill="#06B6D4"/>
-    <text x="42" y="27" font-size="19" font-weight="800" fill="#FFFFFF" letter-spacing="1">FLASH.Ai</text>
+    <rect width="180" height="42" rx="21" fill="rgba(248,250,252,0.06)" stroke="rgba(248,250,252,0.15)" stroke-width="1.5"/>
+    <circle cx="24" cy="21" r="7" fill="#34D399"/>
+    <text x="42" y="27" font-size="19" font-weight="800" fill="#F8FAFC" letter-spacing="1">FLASH.Ai</text>
     
-    <rect x="200" y="0" width="280" height="42" rx="21" fill="rgba(139,92,246,0.15)" stroke="rgba(139,92,246,0.35)" stroke-width="1.5"/>
-    <text x="340" y="27" font-size="15" font-weight="700" fill="#C4B5FD" text-anchor="middle" letter-spacing="0.5">${escapeXml(templateLabel)}</text>
+    <rect x="200" y="0" width="300" height="42" rx="21" fill="rgba(16,185,129,0.12)" stroke="rgba(16,185,129,0.32)" stroke-width="1.5"/>
+    <text x="350" y="27" font-size="15" font-weight="700" fill="#A7F3D0" text-anchor="middle" letter-spacing="0.5">${escapeXml(templateLabel)}</text>
   </g>
 
-  <!-- Kinetic Captions Overlay (CAPTION_SAFE_ZONE: Y 1510-1630) -->
+  <!-- Kinetic Captions Overlay (CAPTION_SAFE_ZONE: Y 1440-1540) -->
   ${captionOverlay}
 </svg>
 `;
@@ -2081,62 +2102,65 @@ export class FrameAnimationEngine {
     const resultOpacity = FrameAnimationEngine.clamp((sceneElapsed - 4.8) / 1.2, 0, 1);
     const cardScale = 0.95 + 0.05 * FrameAnimationEngine.spring(resultOpacity);
 
+    const displayHeadline = escapeXml(ctx.headline || 'NEXT-GEN AI WORKFLOW');
+    const displaySubtitle = escapeXml(ctx.subtitle || 'Everyday Productivity • Zero Setup');
+
     return `
       <g transform="translate(60, 240)">
-        <text x="0" y="0" font-size="52" font-weight="900" fill="#FFFFFF" letter-spacing="-0.5">AI IS GETTING EASIER</text>
-        <text x="0" y="52" font-size="28" font-weight="500" fill="#94A3B8">Everyday Productivity • Zero Setup</text>
+        <text x="0" y="0" font-size="52" font-weight="900" fill="#F8FAFC" letter-spacing="-0.5">${displayHeadline}</text>
+        <text x="0" y="52" font-size="28" font-weight="500" fill="#9BB0A5">${displaySubtitle}</text>
       </g>
 
       <g transform="translate(60, ${panelY.toFixed(1)})" opacity="${panelOpacity.toFixed(3)}">
-        <rect width="960" height="780" rx="28" fill="rgba(15,23,42,0.85)" stroke="rgba(255,255,255,0.12)" stroke-width="2"/>
+        <rect width="960" height="780" rx="28" fill="rgba(12,17,25,0.88)" stroke="rgba(255,255,255,0.12)" stroke-width="2"/>
         
         <circle cx="36" cy="36" r="8" fill="#EF4444"/>
         <circle cx="64" cy="36" r="8" fill="#F59E0B"/>
         <circle cx="92" cy="36" r="8" fill="#10B981"/>
-        <text x="480" y="42" font-size="18" font-weight="600" fill="#64748B" text-anchor="middle">workspace.flash.ai — natural canvas</text>
+        <text x="480" y="42" font-size="18" font-weight="600" fill="#94A3B8" text-anchor="middle">workspace.flash.ai — high precision canvas</text>
 
         <g transform="translate(40, 80)">
-          <rect width="880" height="84" rx="20" fill="rgba(30,41,59,0.9)" stroke="${typingProgress > 0 ? '#06B6D4' : 'rgba(255,255,255,0.1)'}" stroke-width="2"/>
-          <circle cx="44" cy="42" r="16" fill="rgba(6,182,212,0.2)"/>
-          <text x="44" y="48" font-size="20" fill="#06B6D4" text-anchor="middle">•</text>
-          <text x="80" y="49" font-size="23" font-weight="500" fill="${typingProgress > 0 ? '#FFFFFF' : '#64748B'}">
-            ${escapeXml(typedText)}<tspan fill="#06B6D4" opacity="${(Math.sin(sceneElapsed * 8) > 0 ? 1 : 0)}">|</tspan>
+          <rect width="880" height="84" rx="20" fill="rgba(20,28,40,0.9)" stroke="${typingProgress > 0 ? '#34D399' : 'rgba(255,255,255,0.1)'}" stroke-width="2"/>
+          <circle cx="44" cy="42" r="16" fill="rgba(16,185,129,0.2)"/>
+          <text x="44" y="48" font-size="20" fill="#34D399" text-anchor="middle">•</text>
+          <text x="80" y="49" font-size="23" font-weight="500" fill="${typingProgress > 0 ? '#F8FAFC' : '#94A3B8'}">
+            ${escapeXml(typedText)}<tspan fill="#34D399" opacity="${(Math.sin(sceneElapsed * 8) > 0 ? 1 : 0)}">|</tspan>
           </text>
         </g>
 
         ${aiProgress > 0 && aiProgress < 1 ? `
           <g transform="translate(40, 190)">
-            <rect width="${(880 * aiProgress).toFixed(1)}" height="6" rx="3" fill="url(#cyanGrad)"/>
-            <text x="440" y="32" font-size="17" font-weight="600" fill="#38BDF8" text-anchor="middle">Synthesizing workspace canvas &amp; actions...</text>
+            <rect width="${(880 * aiProgress).toFixed(1)}" height="6" rx="3" fill="url(#sageGrad)"/>
+            <text x="440" y="32" font-size="17" font-weight="600" fill="#A7F3D0" text-anchor="middle">Synthesizing workspace canvas &amp; verified actions...</text>
           </g>
         ` : ''}
 
         <g transform="translate(40, 220) scale(${cardScale.toFixed(3)})" opacity="${resultOpacity.toFixed(3)}">
-          <rect x="0" y="0" width="425" height="240" rx="20" fill="rgba(30,41,59,0.6)" stroke="rgba(255,255,255,0.08)" stroke-width="1.5"/>
-          <text x="24" y="42" font-size="19" font-weight="700" fill="#38BDF8">📄 Executive Brief</text>
-          <text x="24" y="80" font-size="17" fill="#CBD5E1">• 42-page brief distilled in 1.2s</text>
-          <text x="24" y="115" font-size="17" fill="#CBD5E1">• Key action items extracted</text>
-          <text x="24" y="150" font-size="17" fill="#CBD5E1">• Team assigned automatically</text>
-          <rect x="24" y="180" width="140" height="34" rx="17" fill="rgba(16,185,129,0.15)"/>
+          <rect x="0" y="0" width="425" height="240" rx="20" fill="rgba(18,25,38,0.7)" stroke="rgba(255,255,255,0.08)" stroke-width="1.5"/>
+          <text x="24" y="42" font-size="19" font-weight="700" fill="#A7F3D0">📄 Executive Brief</text>
+          <text x="24" y="80" font-size="17" fill="#E2E8F0">• 42-page brief distilled in 1.2s</text>
+          <text x="24" y="115" font-size="17" fill="#E2E8F0">• Key action items extracted</text>
+          <text x="24" y="150" font-size="17" fill="#E2E8F0">• Team assigned automatically</text>
+          <rect x="24" y="180" width="140" height="34" rx="17" fill="rgba(16,185,129,0.18)"/>
           <text x="94" y="202" font-size="15" font-weight="700" fill="#34D399" text-anchor="middle">Ready to Share</text>
 
-          <rect x="455" y="0" width="425" height="240" rx="20" fill="rgba(30,41,59,0.6)" stroke="rgba(255,255,255,0.08)" stroke-width="1.5"/>
-          <text x="480" y="42" font-size="19" font-weight="700" fill="#A855F7">⚡ Drag-and-Drop Nodes</text>
-          <circle cx="500" cy="100" r="22" fill="#6366F1"/>
+          <rect x="455" y="0" width="425" height="240" rx="20" fill="rgba(18,25,38,0.7)" stroke="rgba(255,255,255,0.08)" stroke-width="1.5"/>
+          <text x="480" y="42" font-size="19" font-weight="700" fill="#34D399">⚡ Drag-and-Drop Nodes</text>
+          <circle cx="500" cy="100" r="22" fill="#047857"/>
           <text x="500" y="106" font-size="15" fill="#FFF" text-anchor="middle">DOC</text>
-          <line x1="522" y1="100" x2="630" y2="100" stroke="#A855F7" stroke-width="3" stroke-dasharray="6,4"/>
-          <circle cx="652" cy="100" r="22" fill="#EC4899"/>
+          <line x1="522" y1="100" x2="630" y2="100" stroke="#34D399" stroke-width="3" stroke-dasharray="6,4"/>
+          <circle cx="652" cy="100" r="22" fill="#059669"/>
           <text x="652" y="106" font-size="15" fill="#FFF" text-anchor="middle">AI</text>
-          <line x1="674" y1="100" x2="780" y2="100" stroke="#06B6D4" stroke-width="3"/>
+          <line x1="674" y1="100" x2="780" y2="100" stroke="#10B981" stroke-width="3"/>
           <circle cx="802" cy="100" r="22" fill="#10B981"/>
           <text x="802" y="106" font-size="15" fill="#FFF" text-anchor="middle">OUT</text>
-          <text x="480" y="180" font-size="17" fill="#CBD5E1">Instant Pipeline: Zero Code</text>
+          <text x="480" y="180" font-size="17" fill="#E2E8F0">Instant Pipeline: Zero Code</text>
         </g>
 
         <g transform="translate(40, 500)" opacity="${resultOpacity.toFixed(3)}">
-          <rect width="880" height="120" rx="20" fill="rgba(6,182,212,0.08)" stroke="#06B6D4" stroke-width="2"/>
-          <text x="44" y="52" font-size="24" font-weight="800" fill="#38BDF8">Instant Frictionless Interaction</text>
-          <text x="44" y="90" font-size="18" fill="#94A3B8">Natural Language • Interactive Canvas • Zero Setup Barrier</text>
+          <rect width="880" height="120" rx="20" fill="rgba(16,185,129,0.08)" stroke="#10B981" stroke-width="1.5"/>
+          <text x="44" y="52" font-size="24" font-weight="800" fill="#A7F3D0">Instant Frictionless Interaction</text>
+          <text x="44" y="90" font-size="18" fill="#9BB0A5">Natural Language • Interactive Canvas • Zero Setup Barrier</text>
         </g>
       </g>
 
@@ -2152,22 +2176,25 @@ export class FrameAnimationEngine {
     const dividerX = 540 - FrameAnimationEngine.easeInOutCubic(shiftProgress) * 220;
     const nodeProgress = FrameAnimationEngine.clamp((sceneElapsed - 3.8) / 2.0, 0, 1);
 
+    const displayHeadline = escapeXml(ctx.headline || 'CORE ARCHITECTURE BREAKDOWN');
+    const displaySubtitle = escapeXml(ctx.subtitle || 'Natural Language • Drag & Drop Context • Visual Execution');
+
     return `
       <g transform="translate(60, 240)">
-        <text x="0" y="0" font-size="52" font-weight="900" fill="#FFFFFF" letter-spacing="-0.5">LESS PROMPTING. MORE DOING.</text>
-        <text x="0" y="52" font-size="28" font-weight="500" fill="#94A3B8">Natural Language • Drag &amp; Drop Context • Visual Canvas</text>
+        <text x="0" y="0" font-size="52" font-weight="900" fill="#F8FAFC" letter-spacing="-0.5">${displayHeadline}</text>
+        <text x="0" y="52" font-size="28" font-weight="500" fill="#9BB0A5">${displaySubtitle}</text>
       </g>
 
       <g transform="translate(60, 400)">
-        <rect width="960" height="820" rx="28" fill="#0F172A" stroke="rgba(255,255,255,0.12)" stroke-width="2"/>
+        <rect width="960" height="820" rx="28" fill="#0E131E" stroke="rgba(255,255,255,0.12)" stroke-width="2"/>
 
-        <!-- LEFT PANEL: Complex Prompt Engineering -->
+        <!-- LEFT PANEL: Complex Friction -->
         <g clip-path="url(#leftClip)">
           <clipPath id="leftClip">
             <rect x="0" y="0" width="${(dividerX - 60).toFixed(1)}" height="820" rx="28"/>
           </clipPath>
           <rect width="960" height="820" fill="rgba(239,68,68,0.04)"/>
-          <text x="36" y="60" font-size="20" font-weight="800" fill="#F87171" letter-spacing="1">OLD: COMPLEX PROMPTS</text>
+          <text x="36" y="60" font-size="20" font-weight="800" fill="#F87171" letter-spacing="1">PREVIOUS: MANUAL FRICTION</text>
           
           <g transform="translate(36, 100)">
             <rect width="400" height="240" rx="14" fill="rgba(0,0,0,0.5)" stroke="rgba(239,68,68,0.2)"/>
@@ -2191,43 +2218,43 @@ export class FrameAnimationEngine {
           <clipPath id="rightClip">
             <rect x="${(dividerX - 60).toFixed(1)}" y="0" width="${(1020 - dividerX).toFixed(1)}" height="820" rx="28"/>
           </clipPath>
-          <rect width="960" height="820" fill="rgba(6,182,212,0.05)"/>
-          <text x="${(dividerX - 30).toFixed(1)}" y="60" font-size="20" font-weight="800" fill="#38BDF8" letter-spacing="1">NEW: VISUAL CANVAS</text>
+          <rect width="960" height="820" fill="rgba(16,185,129,0.06)"/>
+          <text x="${(dividerX - 30).toFixed(1)}" y="60" font-size="20" font-weight="800" fill="#A7F3D0" letter-spacing="1">NEW: VISUAL CANVAS</text>
 
           <g transform="translate(340, 120)">
-            <path d="M 60 120 C 180 60, 240 220, 380 140" fill="none" stroke="#38BDF8" stroke-width="4" stroke-dasharray="8,6"/>
-            <circle cx="${60 + nodeProgress * 320}" cy="${120 + Math.sin(nodeProgress * Math.PI) * 40}" r="8" fill="#38BDF8"/>
+            <path d="M 60 120 C 180 60, 240 220, 380 140" fill="none" stroke="#34D399" stroke-width="4" stroke-dasharray="8,6"/>
+            <circle cx="${60 + nodeProgress * 320}" cy="${120 + Math.sin(nodeProgress * Math.PI) * 40}" r="8" fill="#34D399"/>
 
             <g transform="translate(0, 70)">
-              <rect width="130" height="100" rx="18" fill="#1E293B" stroke="#06B6D4" stroke-width="2"/>
+              <rect width="130" height="100" rx="18" fill="#141E2D" stroke="#34D399" stroke-width="2"/>
               <text x="65" y="44" font-size="28" text-anchor="middle">📁</text>
-              <text x="65" y="76" font-size="15" font-weight="700" fill="#FFF" text-anchor="middle">Raw Data</text>
+              <text x="65" y="76" font-size="15" font-weight="700" fill="#FFF" text-anchor="middle">Raw Input</text>
             </g>
 
             <g transform="translate(200, 180) scale(${1 + 0.05 * Math.sin(sceneElapsed * 4)})">
-              <rect width="130" height="100" rx="18" fill="#4338CA" stroke="#818CF8" stroke-width="2"/>
+              <rect width="130" height="100" rx="18" fill="#065F46" stroke="#34D399" stroke-width="2"/>
               <text x="65" y="44" font-size="28" text-anchor="middle">⚡</text>
               <text x="65" y="76" font-size="15" font-weight="700" fill="#FFF" text-anchor="middle">Auto-Flow</text>
             </g>
 
             <g transform="translate(360, 90)">
-              <rect width="130" height="100" rx="18" fill="#065F46" stroke="#34D399" stroke-width="2"/>
+              <rect width="130" height="100" rx="18" fill="#047857" stroke="#A7F3D0" stroke-width="2"/>
               <text x="65" y="44" font-size="28" text-anchor="middle">📊</text>
               <text x="65" y="76" font-size="15" font-weight="700" fill="#FFF" text-anchor="middle">Live Result</text>
             </g>
           </g>
 
           <g transform="translate(${(dividerX - 20).toFixed(1)}, 440)">
-            <rect width="520" height="90" rx="18" fill="rgba(30,41,59,0.8)" stroke="rgba(56,189,248,0.3)" stroke-width="1.5"/>
-            <text x="28" y="38" font-size="19" font-weight="700" fill="#38BDF8">✨ Natural Language Intent</text>
-            <text x="28" y="68" font-size="16" fill="#94A3B8">Just speak or drop files — zero coding required</text>
+            <rect width="520" height="90" rx="18" fill="rgba(20,28,40,0.85)" stroke="rgba(167,243,208,0.3)" stroke-width="1.5"/>
+            <text x="28" y="38" font-size="19" font-weight="700" fill="#A7F3D0">✨ Natural Language Intent</text>
+            <text x="28" y="68" font-size="16" fill="#9BB0A5">Just speak or drop files — zero coding required</text>
           </g>
         </g>
 
         <!-- MOVING NEON SPLIT DIVIDER BAR -->
         <g transform="translate(${(dividerX - 60).toFixed(1)}, 0)">
-          <line x1="0" y1="0" x2="0" y2="820" stroke="#38BDF8" stroke-width="4"/>
-          <circle cx="0" cy="410" r="22" fill="#0284C7" stroke="#FFFFFF" stroke-width="3"/>
+          <line x1="0" y1="0" x2="0" y2="820" stroke="#34D399" stroke-width="4"/>
+          <circle cx="0" cy="410" r="22" fill="#047857" stroke="#A7F3D0" stroke-width="3"/>
           <text x="0" y="416" font-size="18" fill="#FFFFFF" text-anchor="middle" font-weight="900">⮂ ⮃</text>
         </g>
       </g>
@@ -2249,10 +2276,13 @@ export class FrameAnimationEngine {
       tabProgress = (sceneElapsed - 4.8) / 2.4;
     }
 
+    const displayHeadline = escapeXml(ctx.headline || 'HIGH-EFFICIENCY CAPABILITIES');
+    const displaySubtitle = escapeXml(ctx.subtitle || 'Instant Execution • Auto-Structuring • Clean Output');
+
     return `
       <g transform="translate(60, 240)">
-        <text x="0" y="0" font-size="50" font-weight="900" fill="#FFFFFF" letter-spacing="-0.5">DOCUMENTS • SPREADSHEETS • CODE</text>
-        <text x="0" y="52" font-size="28" font-weight="500" fill="#94A3B8">Instant Summary • Auto-Structuring • Clean Syntax</text>
+        <text x="0" y="0" font-size="50" font-weight="900" fill="#F8FAFC" letter-spacing="-0.5">${displayHeadline}</text>
+        <text x="0" y="52" font-size="28" font-weight="500" fill="#9BB0A5">${displaySubtitle}</text>
       </g>
 
       <g transform="translate(60, 360)">
@@ -2426,14 +2456,17 @@ export class FrameAnimationEngine {
     const connectProgress = FrameAnimationEngine.clamp(sceneElapsed / 3.0, 0, 1);
     const rotationDeg = (sceneElapsed * 25) % 360;
 
+    const displayHeadline = escapeXml(ctx.headline || 'PRACTICAL AI PRODUCTIVITY');
+    const displaySubtitle = escapeXml(ctx.subtitle || 'Directly Inside Everyday Workflows');
+
     return `
       <g transform="translate(60, 240)">
-        <text x="0" y="0" font-size="52" font-weight="900" fill="#FFFFFF" letter-spacing="-0.5">LESS FRICTION. MORE PRACTICAL AI.</text>
-        <text x="0" y="52" font-size="28" font-weight="500" fill="#94A3B8">Directly Inside Everyday Workflows</text>
+        <text x="0" y="0" font-size="52" font-weight="900" fill="#F8FAFC" letter-spacing="-0.5">${displayHeadline}</text>
+        <text x="0" y="52" font-size="28" font-weight="500" fill="#9BB0A5">${displaySubtitle}</text>
       </g>
 
       <g transform="translate(60, 400)">
-        <rect width="960" height="820" rx="28" fill="#0F172A" stroke="rgba(255,255,255,0.12)" stroke-width="2"/>
+        <rect width="960" height="820" rx="28" fill="#0E131E" stroke="rgba(255,255,255,0.12)" stroke-width="2"/>
 
         <g stroke-dasharray="10,6">
           <path d="M 200 160 C 350 160, 350 410, 480 410" fill="none" stroke="#06B6D4" stroke-width="4" opacity="${connectProgress.toFixed(2)}"/>
@@ -2517,13 +2550,14 @@ export class FrameAnimationEngine {
     const popScale = 0.95 + 0.05 * FrameAnimationEngine.easeOutQuad(Math.min(1, progress * 3));
 
     return `
-      <g transform="translate(${width / 2}, 1420) scale(${popScale.toFixed(3)}) translate(${-width / 2}, 0)">
-        <rect x="80" y="-35" width="${width - 160}" height="70" rx="24" fill="rgba(10,13,20,0.85)" stroke="rgba(255,255,255,0.15)" stroke-width="1.5"/>
-        <text x="${width / 2}" y="12" font-size="32" font-weight="800" text-anchor="middle" letter-spacing="0.5">
+      <g transform="translate(${width / 2}, 1450) scale(${popScale.toFixed(3)}) translate(${-width / 2}, 0)">
+        <rect x="70" y="-40" width="${width - 140}" height="80" rx="26" fill="rgba(6,9,14,0.88)" stroke="rgba(167,243,208,0.25)" stroke-width="1.5"/>
+        <text x="${width / 2}" y="14" font-size="34" font-weight="800" text-anchor="middle" letter-spacing="0.5">
           ${words.map((w, idx) => {
             const isHighlight = idx === highlightIdx;
-            const fill = isHighlight ? '#38BDF8' : '#FFFFFF';
-            return `<tspan fill="${fill}" font-weight="${isHighlight ? '900' : '700'}">${escapeXml(w)} </tspan>`;
+            const fill = isHighlight ? '#A7F3D0' : '#F8FAFC';
+            const weight = isHighlight ? '900' : '700';
+            return `<tspan fill="${fill}" font-weight="${weight}">${escapeXml(w)} </tspan>`;
           }).join('')}
         </text>
       </g>

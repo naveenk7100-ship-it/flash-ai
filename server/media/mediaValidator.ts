@@ -1,11 +1,11 @@
-/**
- * FLASH.Ai Production MP4 & Audio Stream Inspector
- * 
- * Verifies ISO BMFF compliance, H.264 video stream presence,
- * MPEG/AAC audio stream presence, sample rates, channels, bitrate, duration, and 9:16 vertical framing.
- */
-
 import fs from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import ffmpegStatic from 'ffmpeg-static';
+
+const ffmpegBinaryPath: string =
+  typeof ffmpegStatic === 'string'
+    ? ffmpegStatic
+    : ((ffmpegStatic as any)?.default || String(ffmpegStatic || ''));
 
 export interface Mp4StreamReport {
   isValidMp4: boolean;
@@ -21,6 +21,14 @@ export interface Mp4StreamReport {
   audioSampleRate?: number;
   isVertical9x16: boolean;
   totalSizeBytes: number;
+  hasDecodeError: boolean;
+  decodeErrorDetails?: string;
+  isAudible: boolean;
+  maxVolumeDb: number;
+  meanVolumeDb: number;
+  isBlackFrames: boolean;
+  blackFramesRatio?: number;
+  durationSyncOk: boolean;
   errors: string[];
 }
 
@@ -36,6 +44,12 @@ export class MediaValidator {
       audioDurationSeconds: 0,
       isVertical9x16: false,
       totalSizeBytes: 0,
+      hasDecodeError: false,
+      isAudible: false,
+      maxVolumeDb: -99,
+      meanVolumeDb: -99,
+      isBlackFrames: false,
+      durationSyncOk: true,
       errors: []
     };
 
@@ -44,17 +58,23 @@ export class MediaValidator {
       return report;
     }
 
-    const buffer = fs.readFileSync(filePath);
-    report.totalSizeBytes = buffer.length;
+    const fileStat = fs.statSync(filePath);
+    report.totalSizeBytes = fileStat.size;
 
-    if (buffer.length < 32) {
-      report.errors.push('File size is too small for valid MP4 header.');
+    if (report.totalSizeBytes < 100_000) {
+      report.errors.push(`File size is too small for production Reel (${(report.totalSizeBytes / 1024).toFixed(1)} KB; minimum 100 KB required).`);
       return report;
     }
 
+    // Read header for ISO BMFF compliance
+    const fd = fs.openSync(filePath, 'r');
+    const headerBuffer = Buffer.alloc(Math.min(fileStat.size, 1024 * 1024 * 2)); // Read first 2MB for box tree
+    fs.readSync(fd, headerBuffer, 0, headerBuffer.length, 0);
+    fs.closeSync(fd);
+
     // Check ftyp
-    const ftypSize = buffer.readUInt32BE(0);
-    const ftypType = buffer.toString('ascii', 4, 8);
+    const ftypSize = headerBuffer.readUInt32BE(0);
+    const ftypType = headerBuffer.toString('ascii', 4, 8);
     if (ftypType !== 'ftyp' || ftypSize < 16) {
       report.errors.push('Missing or invalid ftyp box.');
       return report;
@@ -62,23 +82,119 @@ export class MediaValidator {
 
     report.isValidMp4 = true;
 
-    // Scan box tree
+    // Scan box tree for basic stream metadata
     let offset = 0;
-    while (offset < buffer.length - 8) {
-      const boxSize = buffer.readUInt32BE(offset);
-      const boxType = buffer.toString('ascii', offset + 4, offset + 8);
-      if (boxSize <= 0 || offset + boxSize > buffer.length + 8) break;
+    while (offset < headerBuffer.length - 8) {
+      const boxSize = headerBuffer.readUInt32BE(offset);
+      const boxType = headerBuffer.toString('ascii', offset + 4, offset + 8);
+      if (boxSize <= 0 || offset + boxSize > headerBuffer.length + 8) break;
 
       if (boxType === 'moov') {
-        this.parseMoov(buffer.subarray(offset + 8, offset + boxSize), report);
+        this.parseMoov(headerBuffer.subarray(offset + 8, offset + boxSize), report);
       }
       offset += boxSize;
+    }
+
+    // Deep FFmpeg Stream Integrity Validation
+    if (ffmpegBinaryPath && fs.existsSync(ffmpegBinaryPath)) {
+      try {
+        // 1. Full Stream Decode Pass (catches corrupt NAL units, incomplete bitstreams, broken moov)
+        const decodeCheck = spawnSync(
+          ffmpegBinaryPath,
+          ['-v', 'error', '-i', filePath, '-f', 'null', '-'],
+          { encoding: 'utf8', timeout: 15000 }
+        );
+
+        if (decodeCheck.status !== 0 || (decodeCheck.stderr && (
+          decodeCheck.stderr.includes('missing picture in access unit') ||
+          decodeCheck.stderr.includes('No start code') ||
+          decodeCheck.stderr.includes('Invalid data') ||
+          decodeCheck.stderr.includes('moov atom not found') ||
+          decodeCheck.stderr.includes('Error')
+        ))) {
+          report.hasDecodeError = true;
+          report.isValidMp4 = false;
+          report.decodeErrorDetails = (decodeCheck.stderr || `Exit code ${decodeCheck.status}`).trim().slice(0, 300);
+          report.errors.push(`FFmpeg decode error: ${report.decodeErrorDetails}`);
+        }
+
+        // 2. Audio Loudness & Speech Presence Verification
+        const volumeCheck = spawnSync(
+          ffmpegBinaryPath,
+          ['-i', filePath, '-af', 'volumedetect', '-f', 'null', '-'],
+          { encoding: 'utf8', timeout: 12000 }
+        );
+
+        const durMatch = (volumeCheck.stderr || '').match(/Duration:\s*(\d+):(\d+):([-\d.]+)/);
+        if (durMatch) {
+          const hours = parseFloat(durMatch[1]);
+          const mins = parseFloat(durMatch[2]);
+          const secs = parseFloat(durMatch[3]);
+          const totalSecs = hours * 3600 + mins * 60 + secs;
+          if (totalSecs > 0) {
+            report.videoDurationSeconds = parseFloat(totalSecs.toFixed(2));
+          }
+        }
+
+        const maxVolMatch = (volumeCheck.stderr || '').match(/max_volume:\s*([-\d.]+)\s*dB/);
+        const meanVolMatch = (volumeCheck.stderr || '').match(/mean_volume:\s*([-\d.]+)\s*dB/);
+
+        if (maxVolMatch && maxVolMatch[1]) {
+          report.maxVolumeDb = parseFloat(maxVolMatch[1]);
+          report.hasAudioStream = true;
+        }
+        if (meanVolMatch && meanVolMatch[1]) {
+          report.meanVolumeDb = parseFloat(meanVolMatch[1]);
+        }
+
+        if (report.hasAudioStream) {
+          report.isAudible = report.maxVolumeDb > -35.0;
+          if (!report.isAudible) {
+            report.errors.push(`Narration is inaudible or silent (max volume: ${report.maxVolumeDb} dB, must exceed -35 dB).`);
+          }
+        } else {
+          report.errors.push('No valid audio stream detected in MP4 container.');
+        }
+
+        // 3. Black Frame Detection
+        const blackCheck = spawnSync(
+          ffmpegBinaryPath,
+          ['-i', filePath, '-vf', 'blackdetect=d=1.0:pix_th=0.10', '-f', 'null', '-'],
+          { encoding: 'utf8', timeout: 12000 }
+        );
+
+        const blackDurMatches = (blackCheck.stderr || '').matchAll(/black_duration:\s*([-\d.]+)/g);
+        let totalBlackSeconds = 0;
+        for (const m of blackDurMatches) {
+          if (m[1]) totalBlackSeconds += parseFloat(m[1]);
+        }
+
+        if (report.videoDurationSeconds > 0 && totalBlackSeconds > report.videoDurationSeconds * 0.5) {
+          report.isBlackFrames = true;
+          report.blackFramesRatio = parseFloat((totalBlackSeconds / report.videoDurationSeconds).toFixed(2));
+          report.errors.push(`Video is predominantly black frames (${totalBlackSeconds.toFixed(1)}s of ${report.videoDurationSeconds}s).`);
+        }
+      } catch (ffErr: any) {
+        // Fall back gracefully if child process timed out
+        report.errors.push(`Deep stream verification inspection notice: ${ffErr?.message || ffErr}`);
+      }
     }
 
     report.isVertical9x16 =
       report.videoWidth > 0 &&
       report.videoHeight > 0 &&
-      Math.abs(report.videoHeight / report.videoWidth - 16 / 9) < 0.05;
+      Math.abs(report.videoHeight / report.videoWidth - 16 / 9) < 0.15;
+
+    if (report.videoWidth > 0 && !report.isVertical9x16) {
+      report.errors.push(`Video is not 9:16 vertical format (${report.videoWidth}x${report.videoHeight}).`);
+    }
+
+    if (report.videoDurationSeconds > 0 && report.audioDurationSeconds > 0) {
+      report.durationSyncOk = Math.abs(report.videoDurationSeconds - report.audioDurationSeconds) < 3.0;
+      if (!report.durationSyncOk) {
+        report.errors.push(`Audio and video duration desynchronized (video: ${report.videoDurationSeconds}s, audio: ${report.audioDurationSeconds}s).`);
+      }
+    }
 
     return report;
   }
@@ -112,6 +228,8 @@ export class MediaValidator {
     let sampleCount = 0;
     let audioSampleRate = 44100;
     let audioChannels = 2;
+    let audioCodec = 'AAC / MP4A';
+    let isAac = true;
 
     let offset = 0;
     while (offset < trakBuffer.length - 8) {
@@ -159,7 +277,9 @@ export class MediaValidator {
                     if (stblBuf.length >= tOffset + 40) {
                       const codec = stblBuf.toString('ascii', tOffset + 16, tOffset + 20);
                       if (codec === '.mp3' || codec === 'mp4a') {
-                        report.audioCodec = codec === '.mp3' ? 'MPEG-1 Audio Layer 3 (MP3)' : 'AAC / MP4A';
+                        isAac = codec !== '.mp3';
+                        audioCodec = codec === '.mp3' ? 'MPEG-1 Audio Layer 3 (MP3)' : 'AAC / MP4A';
+                        report.audioCodec = audioCodec;
                         audioChannels = stblBuf.readUInt16BE(tOffset + 32) || 2;
                         audioSampleRate = (stblBuf.readUInt32BE(tOffset + 40) >>> 16) || 44100;
                       }
@@ -188,8 +308,9 @@ export class MediaValidator {
       report.audioChannels = audioChannels;
       report.audioSampleRate = audioSampleRate;
       report.audioBitrateKbps = 128;
-      report.audioDurationSeconds = parseFloat(((sampleCount * 1152) / audioSampleRate).toFixed(2));
-      if (!report.audioCodec) report.audioCodec = 'MPEG-1 Audio Layer 3 (MP3)';
+      const samplesPerFrame = isAac ? 1024 : 1152;
+      report.audioDurationSeconds = parseFloat(((sampleCount * samplesPerFrame) / audioSampleRate).toFixed(2));
+      if (!report.audioCodec) report.audioCodec = audioCodec;
     }
   }
 }
@@ -204,12 +325,27 @@ export function validateMediaFile(filePath: string): {
     width: number;
     height: number;
     durationSeconds: number;
+    hasVideoStream: boolean;
+    hasAudioStream: boolean;
+    isAudible: boolean;
+    maxVolumeDb: number;
   };
   errors: string[];
 } {
   const report = MediaValidator.inspectMp4File(filePath);
+  const isValid =
+    report.isValidMp4 &&
+    report.hasVideoStream &&
+    report.hasAudioStream &&
+    !report.hasDecodeError &&
+    report.isAudible &&
+    !report.isBlackFrames &&
+    report.totalSizeBytes >= 100_000 &&
+    report.isVertical9x16 &&
+    report.errors.length === 0;
+
   return {
-    isValid: report.isValidMp4,
+    isValid,
     exists: fs.existsSync(filePath),
     size: report.totalSizeBytes,
     errorMessage: report.errors.length > 0 ? report.errors.join('; ') : undefined,
@@ -217,7 +353,11 @@ export function validateMediaFile(filePath: string): {
       fileSizeBytes: report.totalSizeBytes,
       width: report.videoWidth,
       height: report.videoHeight,
-      durationSeconds: report.videoDurationSeconds
+      durationSeconds: report.videoDurationSeconds,
+      hasVideoStream: report.hasVideoStream,
+      hasAudioStream: report.hasAudioStream,
+      isAudible: report.isAudible,
+      maxVolumeDb: report.maxVolumeDb
     },
     errors: report.errors
   };

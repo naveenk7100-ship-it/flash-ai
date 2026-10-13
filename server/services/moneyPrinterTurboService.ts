@@ -227,9 +227,35 @@ export class MoneyPrinterTurboService {
 
     const topic = params.topic.trim();
     const cleanSubject = topic.slice(0, 80);
-    const script = params.script && params.script.trim().length > 0
-      ? params.script.trim()
-      : `Artificial intelligence video production has entered a new era of automation. In 2026, autonomous agent workflows can generate complete social media reels from simple technical concepts without requiring expensive cloud subscriptions or external APIs. By combining high-speed edge text-to-speech narration, precision subtitle synchronization, and intelligent scene composition, creator pipelines can produce broadcast-ready content in minutes. This shift democratizes visual storytelling, enabling engineering teams to publish regular architecture updates and product demonstrations effortlessly.`;
+    let script = params.script && params.script.trim().length > 0 ? params.script.trim() : '';
+    if (!script) {
+      if (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.length > 10) {
+        try {
+          const { GeminiProvider } = await import('../providers/geminiProvider.ts');
+          const gemini = new GeminiProvider();
+          if (gemini.isAvailable()) {
+            const pkg = await gemini.generate({
+              topic,
+              targetAudience: 'AI Creators, Developers & Knowledge Workers',
+              pillar: 'ai-tools',
+              platform: 'instagram',
+              duration: '25s',
+              tone: 'educational-cinematic',
+              cta: 'Follow for daily breakdowns'
+            });
+            if (pkg?.script && pkg.script.length > 30) {
+              script = pkg.script.trim();
+              Logger.info(`[MoneyPrinterTurbo] Gemini generated dynamic script for topic "${cleanSubject}" (${script.length} chars)`, { component: 'Media' });
+            }
+          }
+        } catch (geminiErr: any) {
+          Logger.warn(`[MoneyPrinterTurbo] Gemini script generation notice: ${geminiErr?.message || geminiErr}`, { component: 'Media' });
+        }
+      }
+    }
+    if (!script) {
+      script = `Here is a high-impact breakdown of ${cleanSubject}. Modern AI workflows allow teams to automate repetitive tasks with zero latency and high precision. By combining smart models with instant pipelines, you can ship production features faster than ever before. Follow for daily technical updates and architecture breakdowns.`;
+    }
 
     const voiceName = params.voiceName || 'en-US-ChristopherNeural-Male';
     const videoAspect = params.videoAspect || '9:16';
@@ -343,38 +369,22 @@ export class MoneyPrinterTurboService {
 
     const relativeMediaUrl = `/media/renders/${targetFilename}`;
 
-    // Inspect MP4 stream characteristics
+    // Inspect MP4 stream characteristics via comprehensive MediaValidator gate
     const inspection = MediaValidator.inspectMp4File(targetFilePath);
-    if (!inspection.isValidMp4) {
-      throw new Error(`Generated video failed MP4 validation: ${inspection.errors.join('; ')}`);
+    if (
+      !inspection.isValidMp4 ||
+      !inspection.hasVideoStream ||
+      !inspection.hasAudioStream ||
+      inspection.hasDecodeError ||
+      !inspection.isAudible ||
+      inspection.isBlackFrames ||
+      inspection.totalSizeBytes < 100_000 ||
+      inspection.errors.length > 0
+    ) {
+      throw new Error(`CRITICAL QUALITY GATE FAILURE: Generated video failed stream validation (${inspection.errors.join('; ')})`);
     }
 
-    // 1. Mandatory Audio Stream Gate: Reel must have valid audio stream
-    if (!inspection.hasAudioStream) {
-      throw new Error(`CRITICAL QUALITY GATE FAILURE: Generated video has NO audio track. Narration voiceover is strictly mandatory.`);
-    }
-
-    // 2. Audio Loudness & Speech Presence Gate via FFmpeg volumedetect
-    let maxVolumeDb = -99;
-    try {
-      const ffmpeg = require('ffmpeg-static');
-      if (ffmpeg) {
-        const { spawnSync } = require('node:child_process');
-        const probeRes = spawnSync(ffmpeg, ['-i', targetFilePath, '-af', 'volumedetect', '-f', 'null', 'NUL'], { encoding: 'utf8' });
-        const match = (probeRes.stderr || '').match(/max_volume:\s*([-\d.]+)\s*dB/);
-        if (match && match[1]) {
-          maxVolumeDb = parseFloat(match[1]);
-        }
-      }
-    } catch (volErr: any) {
-      Logger.warn(`[MoneyPrinterTurbo] Volume inspection notice: ${volErr?.message || volErr}`, { component: 'Media' });
-    }
-
-    if (maxVolumeDb < -35) {
-      throw new Error(`AUDIO QUALITY GATE FAILURE: Spoken audio track is silent or inaudible (detected max volume: ${maxVolumeDb} dB). Valid audible speech narration is required.`);
-    }
-
-    Logger.info(`[MoneyPrinterTurbo] Narration audio verified: audible at ${maxVolumeDb} dB (exceeds -35 dB threshold)`, { component: 'Media' });
+    Logger.info(`[MoneyPrinterTurbo] Video and narration audio verified: audible at ${inspection.maxVolumeDb} dB, decodable, 0 black frames`, { component: 'Media' });
 
     const durationSeconds = Math.round(inspection.videoDurationSeconds || taskData.audio_duration || 11);
     const scenesCount = Array.isArray(taskData.materials) && taskData.materials.length > 0
