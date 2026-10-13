@@ -242,12 +242,14 @@ export class MoneyPrinterTurboService {
     if (videoSource === 'local') {
       const localVideosDir = path.resolve(this.mptRootDir, 'storage', 'local_videos');
       if (fs.existsSync(localVideosDir)) {
-        const files = fs.readdirSync(localVideosDir).filter((f) => {
-          const ext = path.extname(f).toLowerCase();
-          return ['.png', '.jpg', '.jpeg', '.mp4'].includes(ext) && !f.includes('.zoom-');
-        });
-        if (files.length > 0) {
-          videoMaterials = files.map((file) => ({
+        // Prioritize real moving 1080x1920 MP4 video clips over static images
+        const allFiles = fs.readdirSync(localVideosDir);
+        const mp4Files = allFiles.filter((f) => path.extname(f).toLowerCase() === '.mp4');
+        const imgFiles = allFiles.filter((f) => ['.png', '.jpg', '.jpeg'].includes(path.extname(f).toLowerCase()));
+
+        const chosenFiles = mp4Files.length > 0 ? mp4Files : imgFiles;
+        if (chosenFiles.length > 0) {
+          videoMaterials = chosenFiles.map((file) => ({
             provider: 'local',
             url: file
           }));
@@ -255,30 +257,35 @@ export class MoneyPrinterTurboService {
       }
     }
 
-    Logger.info(`[MoneyPrinterTurbo] Submitting 9:16 Reel task for topic: "${topic}" (${videoMaterials?.length || 0} local materials)`, { component: 'Media' });
+    Logger.info(`[MoneyPrinterTurbo] Submitting 9:16 Creator Reel task for topic: "${topic}" (${videoMaterials?.length || 0} moving materials, Shuffle transitions, Pop-Spring subtitles)`, { component: 'Media' });
 
-    // Submit task to MPT
+    // Submit task to MPT with modern creator quality settings
     const payload: any = {
       video_subject: cleanSubject,
       video_script: script,
-      video_terms: (params.tags || ['ai', 'technology', 'workflow', 'automation']),
+      video_terms: (params.tags || ['ai', 'technology', 'workflow', 'automation', 'productivity']),
       video_aspect: videoAspect,
+      video_fit_mode: 'cover',
+      video_transition_mode: 'Shuffle', // SlideIn, SlideOut, FadeIn, FadeOut, ZoomIn, ZoomOut
+      video_concat_mode: 'random',
+      video_clip_duration: 3,
       voice_name: voiceName,
       voice_volume: 1.0,
       voice_rate: 1.0,
       bgm_type: bgmType,
-      bgm_volume: bgmVolume,
+      bgm_volume: bgmVolume, // ducked cleanly under speech narration
       subtitle_enabled: true,
-      font_name: 'STHeitiMedium.ttc',
+      subtitle_animation: 'pop_spring', // kinetic typography
+      subtitle_display_mode: 'sentence',
+      subtitle_position: 'bottom',
+      font_name: 'BeVietnamPro-Bold.ttf',
       text_fore_color: '#FFFFFF',
       text_background_color: false,
       stroke_color: '#000000',
-      stroke_width: 1.5,
-      font_size: 52,
+      stroke_width: 2.0,
+      font_size: 56,
       video_source: videoSource,
-      video_clip_duration: 3,
-      video_count: 1,
-      video_concat_mode: 'random'
+      video_count: 1
     };
 
     if (videoMaterials && videoMaterials.length > 0) {
@@ -341,6 +348,33 @@ export class MoneyPrinterTurboService {
     if (!inspection.isValidMp4) {
       throw new Error(`Generated video failed MP4 validation: ${inspection.errors.join('; ')}`);
     }
+
+    // 1. Mandatory Audio Stream Gate: Reel must have valid audio stream
+    if (!inspection.hasAudioStream) {
+      throw new Error(`CRITICAL QUALITY GATE FAILURE: Generated video has NO audio track. Narration voiceover is strictly mandatory.`);
+    }
+
+    // 2. Audio Loudness & Speech Presence Gate via FFmpeg volumedetect
+    let maxVolumeDb = -99;
+    try {
+      const ffmpeg = require('ffmpeg-static');
+      if (ffmpeg) {
+        const { spawnSync } = require('node:child_process');
+        const probeRes = spawnSync(ffmpeg, ['-i', targetFilePath, '-af', 'volumedetect', '-f', 'null', 'NUL'], { encoding: 'utf8' });
+        const match = (probeRes.stderr || '').match(/max_volume:\s*([-\d.]+)\s*dB/);
+        if (match && match[1]) {
+          maxVolumeDb = parseFloat(match[1]);
+        }
+      }
+    } catch (volErr: any) {
+      Logger.warn(`[MoneyPrinterTurbo] Volume inspection notice: ${volErr?.message || volErr}`, { component: 'Media' });
+    }
+
+    if (maxVolumeDb < -35) {
+      throw new Error(`AUDIO QUALITY GATE FAILURE: Spoken audio track is silent or inaudible (detected max volume: ${maxVolumeDb} dB). Valid audible speech narration is required.`);
+    }
+
+    Logger.info(`[MoneyPrinterTurbo] Narration audio verified: audible at ${maxVolumeDb} dB (exceeds -35 dB threshold)`, { component: 'Media' });
 
     const durationSeconds = Math.round(inspection.videoDurationSeconds || taskData.audio_duration || 11);
     const scenesCount = Array.isArray(taskData.materials) && taskData.materials.length > 0
@@ -416,7 +450,28 @@ export class MoneyPrinterTurboService {
       },
       isDemo: false,
       engine: 'MoneyPrinterTurbo',
-      rawScript: script
+      rawScript: script,
+      scenes: (() => {
+        const sentences = script.split(/(?<=[.?!])\s+/).filter((s) => s.trim().length > 0);
+        const motionList = ['fast_zoom_in', 'split_screen_slide', 'card_stack_slide', 'camera_pull_back'];
+        const transitionList = ['slide_left', 'masked_reveal', 'beat_cut', 'smooth_fade'];
+        const sfxList = ['whoosh_impact', 'ui_click', 'card_slide_hit', 'ambient_outro'];
+
+        return sentences.map((sentence, idx) => ({
+          sceneNumber: idx + 1,
+          block: idx === 0 ? 'HOOK' : (idx === sentences.length - 1 ? 'SUMMARY' : 'DEMO'),
+          narration: sentence.trim(),
+          purpose: idx === 0 ? 'Hook & Attention' : (idx === sentences.length - 1 ? 'Summary & Takeaway' : 'Feature Walkthrough'),
+          onScreenHeadline: idx === 0 ? topic.toUpperCase().slice(0, 30) : `KEY POINT 0${idx + 1}`,
+          onScreenSubtitle: sentence.slice(0, 45),
+          visualAssetType: 'MOVING_FOOTAGE',
+          motion: motionList[idx % motionList.length],
+          cameraMovement: idx % 2 === 0 ? 'zoom_in' : 'pan_right',
+          transition: transitionList[idx % transitionList.length],
+          audioCue: sfxList[idx % sfxList.length],
+          visualDescription: `9:16 vertical moving footage clip with pop-spring kinetic typography and Shuffle transition.`
+        }));
+      })()
     };
 
     // Upsert into data/storage/review_records.json

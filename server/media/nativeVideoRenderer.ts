@@ -653,6 +653,10 @@ export class NativeVideoRenderer {
     const hasMusic = fs.existsSync(musicPath);
     const hasVoice = Boolean(audioPath && fs.existsSync(audioPath));
 
+    if (!hasVoice) {
+      throw new Error(`Narration audio track is mandatory for video rendering but missing or unreadable on disk: ${audioPath || 'none'}`);
+    }
+
     const extraInputs: string[] = [];
     let voiceIdx = -1;
     let musicIdx = -1;

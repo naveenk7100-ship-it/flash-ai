@@ -84,7 +84,6 @@ export const DashboardOverview: React.FC = () => {
     generationVerified?: boolean;
   } | null>(null);
   const [recentReels, setRecentReels] = useState<ReviewableReelRecord[]>([]);
-  const [videoBlobUrl, setVideoBlobUrl] = useState<string | null>(null);
   const [isVideoLoading, setIsVideoLoading] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isGeneratingMpt, setIsGeneratingMpt] = useState(false);
@@ -147,52 +146,17 @@ export const DashboardOverview: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
+  // Ensure media and poster URLs pass through ngrok / remote proxy without browser warning interstitial
+  const getPlayableMediaUrl = (url?: string): string => {
+    if (!url) return '';
+    if (url.startsWith('blob:') || url.startsWith('data:')) return url;
+    const separator = url.includes('?') ? '&' : '?';
+    return `${url}${separator}ngrok-skip-browser-warning=true`;
+  };
+
   useEffect(() => {
-    if (!todayReel?.mediaUrl) {
-      setVideoBlobUrl(null);
-      setVideoError(false);
-      return;
-    }
-    let isCancelled = false;
-    setIsVideoLoading(true);
     setVideoError(false);
-
-    // Fetch media with bypass header for ngrok / remote proxy compatibility
-    fetch(todayReel.mediaUrl, {
-      headers: { 'ngrok-skip-browser-warning': 'true' }
-    })
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.blob();
-      })
-      .then((blob) => {
-        if (isCancelled) return;
-        // Verify it's an actual video/binary payload (not an HTML error page)
-        if (blob.type.includes('html') || blob.size < 1000) {
-          throw new Error('Received invalid non-video stream payload');
-        }
-        const objUrl = URL.createObjectURL(blob);
-        setVideoBlobUrl(objUrl);
-        setVideoError(false);
-      })
-      .catch((err) => {
-        console.warn('[DashboardOverview] Blob media load notice, using direct stream:', err);
-        if (!isCancelled) {
-          setVideoBlobUrl(todayReel.mediaUrl);
-        }
-      })
-      .finally(() => {
-        if (!isCancelled) {
-          setIsVideoLoading(false);
-        }
-      });
-
-    return () => {
-      isCancelled = true;
-      if (videoBlobUrl && videoBlobUrl.startsWith('blob:')) {
-        URL.revokeObjectURL(videoBlobUrl);
-      }
-    };
+    setIsVideoLoading(Boolean(todayReel?.mediaUrl));
   }, [todayReel?.id, todayReel?.mediaUrl]);
 
   const fetchMptStatus = async () => {
@@ -820,17 +784,25 @@ export const DashboardOverview: React.FC = () => {
                   <div className="relative w-full h-full bg-black">
                     <video
                       ref={videoRef}
-                      key={videoBlobUrl || todayReel.mediaUrl}
-                      src={videoBlobUrl || todayReel.mediaUrl}
-                      poster={todayReel.thumbnailUrl && !todayReel.thumbnailUrl.endsWith('.mp4') ? todayReel.thumbnailUrl : undefined}
+                      key={todayReel.id || todayReel.mediaUrl}
+                      src={getPlayableMediaUrl(todayReel.mediaUrl)}
+                      poster={todayReel.thumbnailUrl && !todayReel.thumbnailUrl.endsWith('.mp4') ? getPlayableMediaUrl(todayReel.thumbnailUrl) : undefined}
                       controls
                       playsInline
                       muted={isMuted}
                       loop
                       preload="auto"
+                      crossOrigin="anonymous"
+                      onLoadedData={() => {
+                        setIsVideoLoading(false);
+                        setVideoError(false);
+                      }}
+                      onCanPlay={() => {
+                        setIsVideoLoading(false);
+                      }}
                       onError={(e) => {
-                        console.warn('[DashboardOverview] Video playback error event:', e);
-                        if (!isVideoLoading) {
+                        console.warn('[DashboardOverview] Video playback notice:', e);
+                        if (videoRef.current?.error && videoRef.current.networkState === HTMLMediaElement.NETWORK_NO_SOURCE) {
                           setVideoError(true);
                         }
                       }}
@@ -1800,7 +1772,7 @@ export const DashboardOverview: React.FC = () => {
       <PublicPresentationModal
         isOpen={isPresentationOpen}
         onClose={() => setIsPresentationOpen(false)}
-        videoUrl={todayReel?.mediaUrl}
+        videoUrl={getPlayableMediaUrl(todayReel?.mediaUrl)}
         reelTitle={todayReel?.title}
       />
     </div>
