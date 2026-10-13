@@ -58,7 +58,7 @@ export class AIProviderManager {
     return {
       isConnected: true, // Always ready to generate
       provider: active.name,
-      model: isGeminiAvailable ? 'gemini-2.0-flash' : 'flash-ai-production-engine-v1',
+      model: isGeminiAvailable ? 'gemini-2.5-flash' : 'flash-ai-production-engine-v1',
       availableProviders: [...Array.from(this.providers.keys()), ...(isOpenRouterConfigured ? ['openrouter'] : [])],
       isDemo: !isGeminiAvailable || this.activeProviderName === 'demo',
       isOpenRouterConfigured

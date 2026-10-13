@@ -21,6 +21,7 @@ export interface SafeEnvReport {
   elevenLabsEnabled: boolean;
   openRouterApiKey: 'CONFIGURED' | 'MISSING';
   openRouterModel: string;
+  openRouterImageModel: string;
   storageRoot: string;
   isReadyForMetaLive: boolean;
   isReadyForAiGeneration: boolean;
@@ -117,6 +118,10 @@ export class EnvConfig {
     return process.env.OPENROUTER_MODEL?.trim() || 'meta-llama/llama-3.3-70b-instruct';
   }
 
+  public static get openRouterImageModel(): string {
+    return process.env.OPENROUTER_IMAGE_MODEL?.trim() || 'bytedance-seed/seedream-5-0-flash';
+  }
+
   public static get storageRoot(): string {
     return process.env.STORAGE_ROOT?.trim() || './server/data';
   }
@@ -165,6 +170,7 @@ export class EnvConfig {
       elevenLabsEnabled: this.elevenLabsEnabled,
       openRouterApiKey: hasOpenRouterKey ? 'CONFIGURED' : 'MISSING',
       openRouterModel: this.openRouterModel,
+      openRouterImageModel: this.openRouterImageModel,
       storageRoot: this.storageRoot,
       isReadyForMetaLive,
       isReadyForAiGeneration: hasAi,

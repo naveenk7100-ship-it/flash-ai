@@ -874,6 +874,58 @@ export function createAiApiHandler() {
         return;
       }
 
+      if (url === '/api/moneyprinter/submit' && req.method === 'POST') {
+        try {
+          const result = await moneyPrinterTurboService.submitTask(parsedBody || {});
+          res.statusCode = 200;
+          res.end(JSON.stringify({ success: true, ...result }));
+        } catch (err: any) {
+          res.statusCode = 500;
+          res.end(JSON.stringify({ success: false, error: err.message }));
+        }
+        return;
+      }
+
+      if (url.startsWith('/api/moneyprinter/tasks/') && req.method === 'GET') {
+        try {
+          const taskId = url.replace('/api/moneyprinter/tasks/', '').trim();
+          if (!taskId) {
+            res.statusCode = 400;
+            res.end(JSON.stringify({ success: false, error: 'taskId is required' }));
+            return;
+          }
+          const taskRes = await fetch(`http://127.0.0.1:8080/api/v1/tasks/${taskId}`);
+          if (!taskRes.ok) {
+            res.statusCode = taskRes.status;
+            res.end(JSON.stringify({ success: false, error: 'Task fetch failed' }));
+            return;
+          }
+          const taskJson = (await taskRes.json()) as any;
+          const taskData = taskJson.data || {};
+          // state: 0=queued, 1=running/processing, 2=completed, 3=failed
+          if (taskData.state === 1 || taskData.progress === 100) {
+            // Task completed! Auto stage if final video exists
+            const topic = queryParams.get('topic') || taskData.params?.video_subject || 'MoneyPrinter AI Reel';
+            const script = queryParams.get('script') || taskData.params?.video_script || '';
+            const stageResult = moneyPrinterTurboService.stageTaskResult(taskId, taskData, topic, script);
+            res.statusCode = 200;
+            res.end(JSON.stringify({ status: 'COMPLETED', progress: 100, ...stageResult }));
+            return;
+          }
+          if (taskData.state === 3) {
+            res.statusCode = 200;
+            res.end(JSON.stringify({ success: false, status: 'FAILED', progress: 0, error: taskData.error || 'Video rendering failed' }));
+            return;
+          }
+          res.statusCode = 200;
+          res.end(JSON.stringify({ success: true, status: 'PROCESSING', progress: taskData.progress || 25, taskId }));
+        } catch (err: any) {
+          res.statusCode = 500;
+          res.end(JSON.stringify({ success: false, error: err.message }));
+        }
+        return;
+      }
+
       if (url === '/api/moneyprinter/generate' && req.method === 'POST') {
         try {
           const result = await moneyPrinterTurboService.generateReel(parsedBody || {});

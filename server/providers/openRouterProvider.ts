@@ -34,7 +34,7 @@ export class OpenRouterProvider {
   constructor(apiKey?: string) {
     this.apiKey = apiKey || process.env.OPENROUTER_API_KEY || '';
     this.defaultModel = process.env.OPENROUTER_MODEL || 'meta-llama/llama-3.3-70b-instruct';
-    this.visualModel = process.env.OPENROUTER_IMAGE_MODEL || 'black-forest-labs/flux-1-schnell';
+    this.visualModel = process.env.OPENROUTER_IMAGE_MODEL || 'bytedance-seed/seedream-5-0-flash';
   }
 
   public isAvailable(): boolean {
@@ -52,7 +52,7 @@ export class OpenRouterProvider {
 
   /**
    * Generates visual assets (stills/textures) via OpenRouter image models with timeout and retries.
-   * If unconfigured or unsupported, falls back cleanly to procedural motion design.
+   * If unconfigured or unsupported, reports exact failure reason without masking.
    */
   public async generateVisual(
     prompt: string,
@@ -61,10 +61,10 @@ export class OpenRouterProvider {
     const key = this.apiKey || process.env.OPENROUTER_API_KEY || '';
 
     if (!this.isAvailable()) {
-      Logger.info('[OpenRouter] Visual generation unconfigured: OPENROUTER_API_KEY missing. Falling back cleanly to native procedural motion design.', { component: 'Media' });
+      Logger.info('[OpenRouter] Visual generation unconfigured: OPENROUTER_API_KEY missing.', { component: 'Media' });
       return {
         success: false,
-        fallbackToProcedural: true,
+        fallbackToProcedural: false,
         reason: 'OPENROUTER_API_KEY is not configured in environment.'
       };
     }
@@ -81,7 +81,7 @@ export class OpenRouterProvider {
       try {
         Logger.info(`[OpenRouter] Requesting visual asset (attempt ${attempt}/${maxRetries + 1}) using ${this.visualModel}...`, { component: 'Media' });
 
-        const response = await fetch('https://openrouter.ai/api/v1/images/generations', {
+        const response = await fetch('https://openrouter.ai/api/v1/images', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -93,13 +93,22 @@ export class OpenRouterProvider {
             model: this.visualModel,
             prompt,
             n: 1,
-            size: '1024x1792', // 9:16 vertical framing
-            response_format: 'b64_json'
+            aspect_ratio: '9:16'
           }),
           signal: controller.signal
         });
 
         clearTimeout(timeoutId);
+
+        if (response.status === 402) {
+          const errText = await response.text();
+          Logger.warn(`[OpenRouter] Image generation rejected (HTTP 402 Payment Required): ${errText.slice(0, 150)}. OpenRouter account has insufficient credits (free tier balance: $0.00). Image generation requires purchasing credits at https://openrouter.ai/settings/credits.`, { component: 'Media' });
+          return {
+            success: false,
+            fallbackToProcedural: false,
+            reason: 'HTTP 402 Payment Required: Insufficient OpenRouter credits for image generation.'
+          };
+        }
 
         if (response.status === 429) {
           const waitTimeMs = Math.pow(2, attempt) * 1000;
@@ -110,17 +119,17 @@ export class OpenRouterProvider {
           }
           return {
             success: false,
-            fallbackToProcedural: true,
+            fallbackToProcedural: false,
             reason: 'OpenRouter rate limit (429) exceeded maximum retries.'
           };
         }
 
         if (!response.ok) {
           const errText = await response.text();
-          Logger.warn(`[OpenRouter] Image generation API returned HTTP ${response.status}: ${errText.slice(0, 200)}. Falling back to procedural graphics.`, { component: 'Media' });
+          Logger.warn(`[OpenRouter] Image generation API returned HTTP ${response.status}: ${errText.slice(0, 200)}.`, { component: 'Media' });
           return {
             success: false,
-            fallbackToProcedural: true,
+            fallbackToProcedural: false,
             reason: `OpenRouter returned HTTP ${response.status}: ${errText.slice(0, 200)}`
           };
         }

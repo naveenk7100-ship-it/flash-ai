@@ -13,9 +13,9 @@ export class GeminiProvider implements IAIProvider {
   private model: string;
   private recentSessionHooks: Set<string> = new Set();
 
-  constructor(apiKey?: string, model: string = 'gemini-2.0-flash') {
+  constructor(apiKey?: string, model: string = 'gemini-2.5-flash') {
     this.apiKey = apiKey || process.env.GEMINI_API_KEY || '';
-    this.model = model;
+    this.model = model === 'gemini-2.0-flash' ? 'gemini-2.5-flash' : model;
   }
 
   public setApiKey(key: string): void {

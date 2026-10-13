@@ -95,6 +95,28 @@ export class MediaValidator {
       offset += boxSize;
     }
 
+    // If moov not found in header, scan the tail of the file (e.g. non-faststart MP4 files)
+    if (!report.hasVideoStream && fileStat.size > headerBuffer.length) {
+      try {
+        const tailSize = Math.min(fileStat.size, 1024 * 1024 * 2);
+        const tailBuffer = Buffer.alloc(tailSize);
+        const tailFd = fs.openSync(filePath, 'r');
+        fs.readSync(tailFd, tailBuffer, 0, tailSize, fileStat.size - tailSize);
+        fs.closeSync(tailFd);
+        let tOffset = 0;
+        while (tOffset < tailBuffer.length - 8) {
+          const bSize = tailBuffer.readUInt32BE(tOffset);
+          const bType = tailBuffer.toString('ascii', tOffset + 4, tOffset + 8);
+          if (bType === 'moov' && bSize > 8 && tOffset + bSize <= tailBuffer.length) {
+            this.parseMoov(tailBuffer.subarray(tOffset + 8, tOffset + bSize), report);
+            break;
+          }
+          if (bSize <= 0) break;
+          tOffset += bSize;
+        }
+      } catch {}
+    }
+
     // Deep FFmpeg Stream Integrity Validation
     if (ffmpegBinaryPath && fs.existsSync(ffmpegBinaryPath)) {
       try {
@@ -124,6 +146,18 @@ export class MediaValidator {
           ['-i', filePath, '-af', 'volumedetect', '-f', 'null', '-'],
           { encoding: 'utf8', timeout: 12000 }
         );
+
+        const combinedOutput = `${decodeCheck.stderr || ''} ${volumeCheck.stderr || ''}`;
+        const videoMatch = combinedOutput.match(/Stream #\d+:\d+.*?: Video: .*?, (\d{3,4})x(\d{3,4})/);
+        if (videoMatch) {
+          report.hasVideoStream = true;
+          if (!report.videoWidth) report.videoWidth = parseInt(videoMatch[1], 10);
+          if (!report.videoHeight) report.videoHeight = parseInt(videoMatch[2], 10);
+        }
+        const audioMatch = combinedOutput.match(/Stream #\d+:\d+.*?: Audio: ([\w\d]+)/);
+        if (audioMatch) {
+          report.hasAudioStream = true;
+        }
 
         const durMatch = (volumeCheck.stderr || '').match(/Duration:\s*(\d+):(\d+):([-\d.]+)/);
         if (durMatch) {

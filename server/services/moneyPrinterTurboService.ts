@@ -217,9 +217,9 @@ export class MoneyPrinterTurboService {
   }
 
   /**
-   * Generates a 9:16 vertical Reel via MoneyPrinterTurbo
+   * Submits a 9:16 vertical Reel task to MoneyPrinterTurbo asynchronously (returns within <500ms)
    */
-  public async generateReel(params: MoneyPrinterGenerateParams): Promise<MoneyPrinterGenerateResult> {
+  public async submitTask(params: MoneyPrinterGenerateParams): Promise<{ taskId: string; topic: string; script: string }> {
     const status = await this.getStatus();
     if (!status.available) {
       throw new Error(`MoneyPrinterTurbo service is offline at ${this.baseUrl}. Please start the service first.`);
@@ -335,9 +335,16 @@ export class MoneyPrinterTurboService {
       throw new Error(`MoneyPrinterTurbo did not return a valid task_id: ${JSON.stringify(submitJson)}`);
     }
 
-    Logger.info(`[MoneyPrinterTurbo] Task created: ${taskId}. Polling for completion...`, { component: 'Media' });
+    Logger.info(`[MoneyPrinterTurbo] Task created: ${taskId}.`, { component: 'Media' });
+    return { taskId, topic, script };
+  }
 
-    // Poll until complete
+  /**
+   * Generates a 9:16 vertical Reel via MoneyPrinterTurbo (submits and polls until completion)
+   */
+  public async generateReel(params: MoneyPrinterGenerateParams): Promise<MoneyPrinterGenerateResult> {
+    const { taskId, topic, script } = await this.submitTask(params);
+    Logger.info(`[MoneyPrinterTurbo] Polling task ${taskId} for completion...`, { component: 'Media' });
     const taskData = await this.pollTask(taskId);
     return this.stageTaskResult(taskId, taskData, topic, script);
   }
@@ -365,7 +372,22 @@ export class MoneyPrinterTurboService {
 
     const targetFilename = `reel_mpt_${cleanId}.mp4`;
     const targetFilePath = path.resolve(MEDIA_DIRS.renders, targetFilename);
-    fs.copyFileSync(sourceVideoPath, targetFilePath);
+
+    let faststartApplied = false;
+    try {
+      const ffmpeg = require('ffmpeg-static');
+      if (ffmpeg) {
+        const { spawnSync } = require('node:child_process');
+        const fsRes = spawnSync(ffmpeg, ['-y', '-i', sourceVideoPath, '-c', 'copy', '-movflags', '+faststart', targetFilePath]);
+        if (fsRes.status === 0 && fs.existsSync(targetFilePath) && fs.statSync(targetFilePath).size > 1000) {
+          faststartApplied = true;
+        }
+      }
+    } catch {}
+
+    if (!faststartApplied) {
+      fs.copyFileSync(sourceVideoPath, targetFilePath);
+    }
 
     const relativeMediaUrl = `/media/renders/${targetFilename}`;
 

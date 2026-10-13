@@ -171,27 +171,79 @@ export const DashboardOverview: React.FC = () => {
 
   const handleGenerateMptReel = async () => {
     setIsGeneratingMpt(true);
-    showToast('🎬 Generating 9:16 Reel via MoneyPrinterTurbo (Edge TTS + FFmpeg)...', 'info');
+    showToast('🎬 Submitting Reel task to MoneyPrinterTurbo (Edge TTS + FFmpeg)...', 'info');
     try {
-      const res = await fetch('/api/moneyprinter/generate', {
+      const topic = 'Autonomous AI Workflows in 2026';
+      const submitRes = await fetch('/api/moneyprinter/submit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          topic: 'Autonomous AI Workflows in 2026',
+          topic,
           videoAspect: '9:16'
         })
       });
-      if (res.ok) {
-        showToast('✅ MoneyPrinterTurbo Reel generated & staged for review!', 'success');
-        loadData();
-        fetchMptStatus();
-      } else {
-        const err = await res.json();
-        showToast(err.error || 'Failed to generate MoneyPrinterTurbo Reel', 'error');
+
+      if (!submitRes.ok) {
+        // Fallback to synchronous generation if submit endpoint unavailable
+        const res = await fetch('/api/moneyprinter/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ topic, videoAspect: '9:16' })
+        });
+        if (res.ok) {
+          showToast('✅ MoneyPrinterTurbo Reel generated & staged for review!', 'success');
+          loadData();
+          fetchMptStatus();
+        } else {
+          const err = await res.json();
+          showToast(err.error || 'Failed to generate MoneyPrinterTurbo Reel', 'error');
+        }
+        return;
       }
+
+      const submitData = await submitRes.json();
+      const taskId = submitData.taskId;
+      showToast('⚡ Task active in MoneyPrinterTurbo. Assembling video scenes...', 'info');
+
+      // Poll task progress every 3 seconds
+      let attempts = 0;
+      const maxAttempts = 120;
+      const pollInterval = setInterval(async () => {
+        attempts++;
+        try {
+          const pollRes = await fetch(`/api/moneyprinter/tasks/${taskId}?topic=${encodeURIComponent(topic)}`);
+          if (pollRes.ok) {
+            const pollData = await pollRes.json();
+            if (pollData.status === 'COMPLETED') {
+              clearInterval(pollInterval);
+              setIsGeneratingMpt(false);
+              showToast('✅ MoneyPrinterTurbo Reel generated & staged for review!', 'success');
+              if (pollData.reelRecord) {
+                approvalWorkflowEngine.upsertRecord(pollData.reelRecord);
+                setTodayReel(pollData.reelRecord);
+              }
+              loadData();
+              fetchMptStatus();
+              return;
+            } else if (pollData.status === 'FAILED') {
+              clearInterval(pollInterval);
+              setIsGeneratingMpt(false);
+              showToast(pollData.error || 'MoneyPrinterTurbo rendering failed', 'error');
+              return;
+            } else {
+              showToast(`🎬 Rendering scenes in MoneyPrinterTurbo (${pollData.progress || 35}%)...`, 'info');
+            }
+          }
+        } catch {}
+
+        if (attempts >= maxAttempts) {
+          clearInterval(pollInterval);
+          setIsGeneratingMpt(false);
+          showToast('Rendering is still running in background. Refresh in a minute.', 'info');
+        }
+      }, 3000);
     } catch (err: any) {
       showToast(err.message || 'Error generating Reel', 'error');
-    } finally {
       setIsGeneratingMpt(false);
     }
   };
